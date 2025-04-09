@@ -13,29 +13,42 @@ export default function App() {
 
       <View style={styles.content}>
 
-        <Image source={icon} style={{ width: 200, height: 200, marginTop: 100 }}/>  
+        <Image source={icon} style={{ width: 180, height: 180, marginTop: 80 }}/>  
+      
+        <TextInput 
+          style={styles.TextInput}
+          placeholder='USERNAME'
+          placeholderTextColor={'white'}
+        />
       
         <TextInput 
           style={styles.TextInput}
           placeholder='E-MAIL'
           placeholderTextColor={'white'}
         />
-      
-        <TextInput 
-          style={styles.TextInput}
-          placeholder='PASSWORD'
-          placeholderTextColor={'white'}
+        <TextInput
+            style={styles.TextInput}
+            placeholder='PASSWORD'
+            placeholderTextColor={'white'}
+        />
+        <TextInput
+            style={styles.TextInput}
+            placeholder='REPEAT PASSWORD'
+            placeholderTextColor={'white'}
         />
       
         <TouchableOpacity 
-          style={styles.loginButton} 
+          style={styles.signInButton} 
           onPress={() => alert('¡Botón presionado!')}>
-          <Text style={styles.buttonText}>LOG IN</Text>
+          <Text style={styles.buttonText}>SIGN IN</Text>
         </TouchableOpacity>
 
-        <Pressable onPress={() => alert('Texto como botón')}>
-          <Text style={{ color: 'white', margin: 20, }}>Forgot your password?</Text>
-        </Pressable>
+        <View style={styles.dividerContainer}>
+        <View style={styles.line} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.line} />
+        </View>
+
 
         <TouchableOpacity 
         
@@ -54,6 +67,10 @@ export default function App() {
           <Text style={styles.buttonText}>Continue With Apple</Text>
         
         </TouchableOpacity>
+
+        <Text style={styles.TermsText}>By clicking continue, you agree to our Terms of Service and Privacy Policy</Text>
+        
+       
 
 
       </View>
@@ -93,8 +110,16 @@ const styles = StyleSheet.create({
     marginTop: 25,
     color:'white',
   },
+  TermsText:{
+    color: 'white',
+    textAlign: 'center',
+    width: '80%',
+    marginTop: 20,
+    fontSize: 13,
+    lineHeight: 18,
+  },
 
-  loginButton: {
+  signInButton: {
     backgroundColor: 'white',
     paddingVertical: 15,
     borderRadius: 30,
@@ -102,6 +127,25 @@ const styles = StyleSheet.create({
     width: '50%',
     display: 'flex',
   },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#fff', 
+    opacity: 0.6,
+  },
+  
+  dividerText: {
+    marginHorizontal: 10,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  
 
   buttonText: {
     color: 'black', 
