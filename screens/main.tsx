@@ -21,7 +21,7 @@ import { RootStackParamList } from '../index';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export default function App() {
+export default function MainScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [location, setLocation] = useState(null);
   const mapRef = useRef(null);
@@ -96,24 +96,26 @@ export default function App() {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
+      {/* Sombra falsa hacia arriba */}
+      <View style={styles.shadowOverlay} />
+
       {/* Barra inferior */}
       <View style={styles.bottomNav}>
-  <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-    <FontAwesome name="home" size={28} color="white" />
-  </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+          <FontAwesome name="home" size={28} color="white" />
+        </TouchableOpacity>
 
-  <TouchableOpacity onPress={() => alert('Buscar')}>
-    <FontAwesome name="heart" size={28} color="white" />
-  </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
+          <FontAwesome name="heart" size={28} color="white" />
+        </TouchableOpacity>
 
-  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-    <FontAwesome name="user" size={28} color="white" />
-  </TouchableOpacity>
-</View>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+          <FontAwesome name="user" size={28} color="white" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
-
 
 
 const styles = StyleSheet.create({
@@ -160,6 +162,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#000',
   },
+  shadowOverlay: {
+    position: 'absolute',
+    bottom: 59,
+    width: '100%',
+    height: 3,
+    backgroundColor: '#000',
+    opacity: 0.5,
+    zIndex: 9,
+  },
   bottomNav: {
     position: 'absolute',
     bottom: 0,
@@ -171,5 +182,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 0.5,
     borderColor: '#eee',
+    zIndex: 10,
   },
 });
