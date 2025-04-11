@@ -1,12 +1,16 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, TouchableOpacity, Text, View, Image, TextInput, Button, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { RootStackParamList } from '../index';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const icon = require('../assets/img/icon-1.png');
 const googleLogo = require('../assets/img/googleLogo.png');
 const appleLogo = require('../assets/img/appleLogo.png');
 
 export default function App() {
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   return (
 
     <View style={styles.container}>
@@ -43,6 +47,12 @@ export default function App() {
           <Text style={styles.buttonText}>SIGN IN</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity 
+          style={styles.signInButton} 
+          onPress={() => alert('¡Botón presionado!')}>
+          <Text style={styles.buttonText}>LOGIN</Text>
+        </TouchableOpacity>
+
         <View style={styles.dividerContainer}>
         <View style={styles.line} />
         <Text style={styles.dividerText}>or</Text>
@@ -76,19 +86,18 @@ export default function App() {
       </View>
 
       <View style={styles.bottomNav}>
-          
-          <TouchableOpacity onPress={() => alert('Inicio')}>
-            <FontAwesome name="home" size={28} color="white" />
-          </TouchableOpacity>
+  <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+    <FontAwesome name="home" size={28} color="white" />
+  </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => alert('Buscar')}>
-            <FontAwesome name="heart" size={28} color="white" />
-          </TouchableOpacity>
+  <TouchableOpacity onPress={() => alert('Buscar')}>
+    <FontAwesome name="heart" size={28} color="white" />
+  </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => alert('Perfil')}>
-            <FontAwesome name="user" size={28} color="white" />
-          </TouchableOpacity>
-        </View>
+  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+    <FontAwesome name="user" size={28} color="white" />
+  </TouchableOpacity>
+</View>
       
       <StatusBar style="light" />
     </View>
@@ -127,6 +136,16 @@ const styles = StyleSheet.create({
     width: '50%',
     display: 'flex',
   },
+
+  loginInButton: {
+    backgroundColor: 'white',
+    paddingVertical: 15,
+    borderRadius: 30,
+    marginTop: 25,
+    width: '50%',
+    display: 'flex',
+  },
+
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',

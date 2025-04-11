@@ -1,20 +1,22 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, TouchableOpacity, Text, View, Image, TextInput, Button, Pressable } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text, View, Image, TextInput, Pressable } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { RootStackParamList } from '../index';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 const icon = require('../assets/img/icon-1.png');
 const googleLogo = require('../assets/img/googleLogo.png');
 const appleLogo = require('../assets/img/appleLogo.png');
 
 export default function App() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
   return (
-
     <View style={styles.container}>
-
       <View style={styles.content}>
+        <Image source={icon} style={{ width: 200, height: 200, marginTop: 100 }} />  
 
-        <Image source={icon} style={{ width: 200, height: 200, marginTop: 100 }}/>  
-      
         <TextInput 
           style={styles.TextInput}
           placeholder='E-MAIL'
@@ -34,44 +36,37 @@ export default function App() {
         </TouchableOpacity>
 
         <Pressable onPress={() => alert('Texto como botón')}>
-          <Text style={{ color: 'white', margin: 20, }}>Forgot your password?</Text>
+          <Text style={{ color: 'white', margin: 20 }}>Forgot your password?</Text>
         </Pressable>
 
         <TouchableOpacity 
-        
           style={styles.continueButton} 
           onPress={() => alert('¡Botón presionado!')}>
-          <Image source={googleLogo} style={{ width:40, height:40 }}/>  
+          <Image source={googleLogo} style={{ width: 40, height: 40 }} />  
           <Text style={styles.buttonText}>Continue With Google</Text>
-        
         </TouchableOpacity>
 
         <TouchableOpacity 
-        
           style={styles.continueButton} 
           onPress={() => alert('¡Botón presionado!')}>
-          <Image source={appleLogo} style={{ width:40, height:40 }}/>  
+          <Image source={appleLogo} style={{ width: 40, height: 40 }} />  
           <Text style={styles.buttonText}>Continue With Apple</Text>
-        
         </TouchableOpacity>
-
-
       </View>
 
       <View style={styles.bottomNav}>
-          
-          <TouchableOpacity onPress={() => alert('Inicio')}>
-            <FontAwesome name="home" size={28} color="white" />
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+          <FontAwesome name="home" size={28} color="white" />
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => alert('Buscar')}>
-            <FontAwesome name="heart" size={28} color="white" />
-          </TouchableOpacity>
+        <TouchableOpacity onPress={() => alert('Buscar')}>
+          <FontAwesome name="heart" size={28} color="white" />
+        </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => alert('Perfil')}>
-            <FontAwesome name="user" size={28} color="white" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => alert('Perfil')}>
+          <FontAwesome name="user" size={28} color="white" />
+        </TouchableOpacity>
+      </View>
       
       <StatusBar style="light" />
     </View>
@@ -79,21 +74,18 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  
   container: {
     flex: 1,
     backgroundColor: '#ff9500',
     justifyContent: 'center',
   },
-
   TextInput: {
     borderBottomWidth: 1,
     borderColor: 'white',
     width: '80%',
     marginTop: 25,
-    color:'white',
+    color: 'white',
   },
-
   loginButton: {
     backgroundColor: 'white',
     paddingVertical: 15,
@@ -102,14 +94,12 @@ const styles = StyleSheet.create({
     width: '50%',
     display: 'flex',
   },
-
   buttonText: {
-    color: 'black', 
+    color: 'black',
     fontWeight: 'bold',
     fontSize: 16,
     textAlign: 'center',
   },
-
   continueButton: {
     flexDirection: 'row',        
     alignItems: 'center',        
@@ -120,7 +110,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     width: '90%',
   },
-
   bottomNav: {
     position: 'absolute',
     bottom: 0,
@@ -134,7 +123,6 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     backgroundColor: '#ff9500',
   },
-
   content: {
     flex: 1,
     alignItems: 'center',

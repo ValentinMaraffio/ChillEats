@@ -17,8 +17,12 @@ import {
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { RootStackParamList } from '../index';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 export default function App() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [location, setLocation] = useState(null);
   const mapRef = useRef(null);
 
@@ -66,7 +70,7 @@ export default function App() {
               showsUserLocation={true}
             />
 
-              <Ionicons name="locate" size={24} color="#ff9500" />
+            <Ionicons name="locate" size={24} color="#ff9500" />
 
             {/* Buscador y filtros */}
             <View style={styles.searchContainer}>
@@ -92,21 +96,25 @@ export default function App() {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* Barra inferior de navegación */}
+      {/* Barra inferior */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity>
-          <FontAwesome name="home" size={24} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <FontAwesome name="heart" size={24} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <FontAwesome name="user" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+    <FontAwesome name="home" size={28} color="white" />
+  </TouchableOpacity>
+
+  <TouchableOpacity onPress={() => alert('Buscar')}>
+    <FontAwesome name="heart" size={28} color="white" />
+  </TouchableOpacity>
+
+  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+    <FontAwesome name="user" size={28} color="white" />
+  </TouchableOpacity>
+</View>
     </SafeAreaView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ff9500' },
@@ -164,5 +172,4 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderColor: '#eee',
   },
-  
 });
