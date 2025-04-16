@@ -21,7 +21,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="Register" screenOptions={{ headerShown: false }}>
+        <Stack.Navigator initialRouteName="Main" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Main" component={MainScreen} />
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
