@@ -2,18 +2,12 @@ import 'react-native-gesture-handler'; // 👈 Importalo arriba del todo, antes 
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { RootStackParamList } from './types/navigation';
 import MainScreen from './screens/main';
 import LoginScreen from './screens/login';
 import RegisterScreen from './screens/register';
 import FavoritesScreen from './screens/favorites';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-export type RootStackParamList = {
-  Main: undefined;
-  Login: undefined;
-  Register: undefined;
-  Favorites: undefined;
-};
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 

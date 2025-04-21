@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
@@ -12,28 +13,27 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  FlatList,
 } from 'react-native';
 
 import MapView, { PROVIDER_GOOGLE, Marker, Camera } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../index';
+import { RootStackParamList } from '../types/navigation';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { v4 as uuidv4 } from 'uuid';
+import axios from 'axios';
 
-const FOURSQUARE_API_KEY = 'fsq3bibV5tONj9yyajOVMfaC4QuK6v6ATNZ3o2DvIRV2bhU=';
+const GOOGLE_API_KEY = 'AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4';
 
-// Definimos el tipo para los lugares de comida
-interface FoodPlace {
-  fsq_id: string;
+interface Place {
   name: string;
-  location: {
-    formatted_address: string;
-  };
-  geocodes: {
-    main: {
-      latitude: number;
-      longitude: number;
+  formatted_address: string;
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
     };
   };
 }
@@ -41,8 +41,9 @@ interface FoodPlace {
 export default function MainScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
-  const [foodPlaces, setFoodPlaces] = useState<FoodPlace[]>([]);
-  const [nextPage, setNextPage] = useState<string | null>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [predictions, setPredictions] = useState<any[]>([]);
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
@@ -55,71 +56,79 @@ export default function MainScreen() {
 
       let currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
-
-      fetchFoodPlaces(currentLocation.coords.latitude, currentLocation.coords.longitude);
     })();
   }, []);
 
-  const fetchFoodPlaces = async (latitude: number, longitude: number, nextPageUrl: string | null = null) => {
-    try {
-      const response = await fetch(
-        nextPageUrl ||
-          `https://api.foursquare.com/v3/places/search?ll=${latitude},${longitude}&categories=13065&radius=3000&limit=50`,
-        {
-          headers: {
-            Accept: 'application/json',
-            Authorization: FOURSQUARE_API_KEY,
-          },
-        }
-      );
-
-      if (response.status === 401) {
-        Alert.alert(
-          'Error de Autenticación',
-          'El token de autenticación es inválido o ha expirado. Por favor revisa tu clave de API.'
-        );
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!data.results || data.results.length === 0) {
-        Alert.alert(
-          'Sin resultados',
-          'No se encontraron restaurantes cercanos en un radio de 3km.'
-        );
-      }
-
-      // Agregar los nuevos lugares a la lista existente
-      setFoodPlaces((prevPlaces) => [...prevPlaces, ...data.results]);
-
-      // Si hay una página siguiente, configurar el siguiente URL de la paginación
-      setNextPage(data.next_page || null);
-    } catch (error) {
-      console.error('Error al obtener lugares de comida:', error);
-    }
-  };
-
-  const loadMorePlaces = () => {
-    if (nextPage) {
-      fetchFoodPlaces(location?.latitude || 0, location?.longitude || 0, nextPage);
-    }
-  };
-
   const centerMapOnUser = async () => {
-    if (location && mapRef.current) {
-      const camera: Camera = {
-        center: {
-          latitude: location.latitude,
-          longitude: location.longitude,
+    let currentLocation = await Location.getCurrentPositionAsync({});
+    setLocation(currentLocation.coords);
+
+    mapRef.current?.animateToRegion({
+      latitude: currentLocation.coords.latitude,
+      longitude: currentLocation.coords.longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
+  };
+
+  const faceNorth = () => {
+    if (!location || !mapRef.current) return;
+
+    // Solo orientamos el mapa hacia el norte (sin zoom ni cambios en la posición)
+    const camera: Partial<Camera> = {
+      heading: 0, // Apunta al norte
+    };
+
+    mapRef.current.animateCamera(camera as Camera, { duration: 1000 });
+  };
+
+  const handleSearch = async () => {
+    if (!searchText || !location) return;
+
+    try {
+      const response = await axios.get(`https://maps.googleapis.com/maps/api/place/textsearch/json`, {
+        params: {
+          query: searchText,
+          location: `${location.latitude},${location.longitude}`,
+          radius: 5000,
+          key: GOOGLE_API_KEY,
         },
-        pitch: 0,
-        heading: 0,
-        zoom: 16,
-        altitude: 0,
-      };
-      mapRef.current.animateCamera(camera, { duration: 1000 });
+      });
+
+      setPlaces(response.data.results);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron obtener los resultados de búsqueda');
     }
+  };
+
+  const handleAutocomplete = async (query: string) => {
+    if (!query) {
+      setPredictions([]);
+      return;
+    }
+
+    const { latitude, longitude } = location || { latitude: 0, longitude: 0 };
+
+    try {
+      const response = await axios.get(`https://maps.googleapis.com/maps/api/place/autocomplete/json`, {
+        params: {
+          input: query,
+          location: `${latitude},${longitude}`,
+          radius: 5000,
+          key: GOOGLE_API_KEY,
+        },
+      });
+
+      setPredictions(response.data.predictions);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron obtener las predicciones');
+    }
+  };
+
+  const handleSelectPrediction = (place: any) => {
+    setSearchText(place.description);
+    setPredictions([]);
+    handleSearch();
   };
 
   if (!location) {
@@ -144,37 +153,42 @@ export default function MainScreen() {
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
               style={StyleSheet.absoluteFillObject}
+              showsUserLocation={true}
+              showsMyLocationButton={false}
+              showsCompass={false}       
               initialRegion={{
                 latitude: location.latitude,
                 longitude: location.longitude,
                 latitudeDelta: 0.01,
                 longitudeDelta: 0.01,
               }}
-              showsUserLocation={true}
-              showsMyLocationButton={false}
+              mapPadding={{ top: 0, right: 0, bottom: 160, left: 0 }}
             >
-              {foodPlaces.map((place, index) => (
+              {places.map((place) => (
                 <Marker
-                  key={`${place.fsq_id}-${index}`} // Se asegura de que la clave sea única
+                  key={uuidv4()}
                   coordinate={{
-                    latitude: place.geocodes.main.latitude,
-                    longitude: place.geocodes.main.longitude,
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
                   }}
                   title={place.name}
-                  description={place.location.formatted_address}
+                  description={place.formatted_address}
                 />
               ))}
             </MapView>
 
-            {/* Botón para centrar en el usuario */}
-            <TouchableOpacity
-              style={styles.centerButton}
-              onPress={centerMapOnUser}
-            >
-              <Ionicons name="locate" size={24} color="#ff9500" />
-            </TouchableOpacity>
+            {/* Botón de localización */}
+            <View style={styles.floatingButtons}>
+              <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
+                <Ionicons name="locate" size={24} color="#fff" />
+              </TouchableOpacity>
+              {/* Botón brújula */}
+              <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
+                <Ionicons name="compass" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
-            {/* Buscador y filtros */}
+            {/* Buscador */}
             <View style={styles.searchContainer}>
               <View style={styles.searchBar}>
                 <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
@@ -182,42 +196,49 @@ export default function MainScreen() {
                   placeholder="Buscar..."
                   placeholderTextColor="gray"
                   style={styles.searchInput}
+                  value={searchText}
+                  onChangeText={(text) => {
+                    setSearchText(text);
+                    handleAutocomplete(text);
+                  }}
+                  onSubmitEditing={handleSearch}
                 />
-                <Ionicons name="location-sharp" size={20} color="gray" style={{ marginRight: 10 }} />
               </View>
 
+              {predictions.length > 0 && (
+                <FlatList
+                  data={predictions}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.predictionItem} onPress={() => handleSelectPrediction(item)}>
+                      <Text style={styles.predictionText}>{item.description}</Text>
+                    </TouchableOpacity>
+                  )}
+                  keyExtractor={(item) => item.place_id}
+                  style={styles.predictionList}
+                />
+              )}
+
               <View style={styles.filters}>
-                {['Localidad', 'Limitación', 'Precio', 'Local'].map((filter, index) => (
-                  <TouchableOpacity key={index} style={styles.filterButton}>
+                {['Localidad', 'Limitación', 'Precio', 'Local'].map((filter) => (
+                  <TouchableOpacity key={uuidv4()} style={styles.filterButton}>
                     <Text style={styles.filterText}>{filter}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
-
-            {/* Botón para cargar más lugares si hay más resultados */}
-            {nextPage && (
-              <TouchableOpacity style={styles.loadMoreButton} onPress={loadMorePlaces}>
-                <Text style={styles.loadMoreText}>Cargar más</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {/* Sombra falsa hacia arriba */}
       <View style={styles.shadowOverlay} />
 
-      {/* Barra inferior */}
       <View style={styles.bottomNav}>
         <TouchableOpacity onPress={() => navigation.navigate('Main')}>
           <FontAwesome name="home" size={28} color="white" />
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
           <FontAwesome name="heart" size={28} color="white" />
         </TouchableOpacity>
-
         <TouchableOpacity onPress={() => navigation.navigate('Login')}>
           <FontAwesome name="user" size={28} color="white" />
         </TouchableOpacity>
@@ -270,39 +291,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#000',
   },
-  centerButton: {
-    position: 'absolute',
-    bottom: 80,
-    right: 20,
-    backgroundColor: 'white',
-    borderRadius: 24,
-    padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    zIndex: 11,
-  },
-  loadMoreButton: {
-    position: 'absolute',
-    bottom: 130,
-    left: '50%',
-    marginLeft: -50,
-    backgroundColor: '#ff9500', // Color del botón "Cargar más"
-    padding: 12,
-    borderRadius: 24,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    zIndex: 11,
-  },
-  loadMoreText: {
-    color: 'white',
-    fontSize: 16,
-  },
   shadowOverlay: {
     position: 'absolute',
     bottom: 59,
@@ -324,5 +312,38 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderColor: '#eee',
     zIndex: 10,
+  },
+  predictionList: {
+    backgroundColor: 'white',
+    width: '90%',
+    maxHeight: 200,
+    borderRadius: 8,
+    marginTop: 10,
+    marginBottom: 10,
+    position: 'absolute',
+    top: 100,
+    zIndex: 999,
+    elevation: 5,
+  },
+  predictionItem: {
+    padding: 10,
+  },
+  predictionText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  floatingButtons: {
+    position: 'absolute',
+    bottom: 80,
+    right: 20,
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  floatButton: {
+    backgroundColor: '#ff9500',
+    padding: 10,
+    borderRadius: 50,
+    elevation: 3,
   },
 });
