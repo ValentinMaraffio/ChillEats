@@ -1,21 +1,10 @@
 import 'react-native-get-random-values';
+
 import React, { useEffect, useState, useRef } from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-  FlatList,
+  StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator,
+  Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList,
 } from 'react-native';
-
 import MapView, { PROVIDER_GOOGLE, Marker, Camera } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
@@ -29,7 +18,8 @@ const GOOGLE_API_KEY = 'AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4';
 
 interface Place {
   name: string;
-  formatted_address: string;
+  rating: number;
+  user_ratings_total: number;
   geometry: {
     location: {
       lat: number;
@@ -42,9 +32,13 @@ export default function MainScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [searchText, setSearchText] = useState('');
   const [predictions, setPredictions] = useState<any[]>([]);
+  const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
+  const [hasSelectedPrediction, setHasSelectedPrediction] = useState(false);
   const mapRef = useRef<MapView>(null);
+  const markerPressRef = useRef(false); // <- NUEVO
 
   useEffect(() => {
     (async () => {
@@ -53,16 +47,27 @@ export default function MainScreen() {
         Alert.alert('Permiso denegado', 'Se necesita acceso a la ubicación para usar esta función.');
         return;
       }
-
       let currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
     })();
   }, []);
 
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const centerMapOnUser = async () => {
     let currentLocation = await Location.getCurrentPositionAsync({});
     setLocation(currentLocation.coords);
-
     mapRef.current?.animateToRegion({
       latitude: currentLocation.coords.latitude,
       longitude: currentLocation.coords.longitude,
@@ -73,17 +78,16 @@ export default function MainScreen() {
 
   const faceNorth = () => {
     if (!location || !mapRef.current) return;
-
-    // Solo orientamos el mapa hacia el norte (sin zoom ni cambios en la posición)
-    const camera: Partial<Camera> = {
-      heading: 0, // Apunta al norte
-    };
-
+    const camera: Partial<Camera> = { heading: 0 };
     mapRef.current.animateCamera(camera as Camera, { duration: 1000 });
   };
 
   const handleSearch = async () => {
     if (!searchText || !location) return;
+    if (hasSelectedPrediction) {
+      setHasSelectedPrediction(false);
+      return;
+    }
 
     try {
       const response = await axios.get(`https://maps.googleapis.com/maps/api/place/textsearch/json`, {
@@ -94,8 +98,8 @@ export default function MainScreen() {
           key: GOOGLE_API_KEY,
         },
       });
-
       setPlaces(response.data.results);
+      setSelectedPlace(null);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron obtener los resultados de búsqueda');
     }
@@ -106,9 +110,7 @@ export default function MainScreen() {
       setPredictions([]);
       return;
     }
-
     const { latitude, longitude } = location || { latitude: 0, longitude: 0 };
-
     try {
       const response = await axios.get(`https://maps.googleapis.com/maps/api/place/autocomplete/json`, {
         params: {
@@ -118,17 +120,66 @@ export default function MainScreen() {
           key: GOOGLE_API_KEY,
         },
       });
-
       setPredictions(response.data.predictions);
     } catch (error) {
       Alert.alert('Error', 'No se pudieron obtener las predicciones');
     }
   };
 
-  const handleSelectPrediction = (place: any) => {
-    setSearchText(place.description);
+  const handleSelectPrediction = async (prediction: any) => {
+    setSearchText(prediction.description);
     setPredictions([]);
-    handleSearch();
+    setHasSelectedPrediction(true);
+
+    try {
+      const detailResponse = await axios.get(`https://maps.googleapis.com/maps/api/place/details/json`, {
+        params: {
+          place_id: prediction.place_id,
+          key: GOOGLE_API_KEY,
+        },
+      });
+
+      const result = detailResponse.data.result;
+      const place: Place = {
+        name: result.name,
+        rating: result.rating,
+        user_ratings_total: result.user_ratings_total,
+        geometry: {
+          location: {
+            lat: result.geometry.location.lat,
+            lng: result.geometry.location.lng,
+          },
+        },
+      };
+
+      setPlaces([place]);
+      setSelectedPlace(place);
+
+      mapRef.current?.animateToRegion({
+        latitude: place.geometry.location.lat,
+        longitude: place.geometry.location.lng,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+
+    } catch (error) {
+      Alert.alert('Error', 'No se pudo obtener la información del lugar');
+    }
+  };
+
+  const handleSelectPlace = (place: Place) => {
+    markerPressRef.current = true; // <- NUEVO
+
+    if (location) {
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        place.geometry.location.lat,
+        place.geometry.location.lng
+      );
+      setSelectedDistance(distance);
+    }
+    setSelectedPlace(place);
   };
 
   if (!location) {
@@ -155,7 +206,7 @@ export default function MainScreen() {
               style={StyleSheet.absoluteFillObject}
               showsUserLocation={true}
               showsMyLocationButton={false}
-              showsCompass={false}       
+              showsCompass={false}
               initialRegion={{
                 latitude: location.latitude,
                 longitude: location.longitude,
@@ -163,6 +214,13 @@ export default function MainScreen() {
                 longitudeDelta: 0.01,
               }}
               mapPadding={{ top: 0, right: 0, bottom: 160, left: 0 }}
+              onPress={() => {
+                if (markerPressRef.current) {
+                  markerPressRef.current = false;
+                } else {
+                  setSelectedPlace(null); // <- Oculta la tarjeta
+                }
+              }}
             >
               {places.map((place) => (
                 <Marker
@@ -172,23 +230,20 @@ export default function MainScreen() {
                     longitude: place.geometry.location.lng,
                   }}
                   title={place.name}
-                  description={place.formatted_address}
+                  onPress={() => handleSelectPlace(place)}
                 />
               ))}
             </MapView>
 
-            {/* Botón de localización */}
             <View style={styles.floatingButtons}>
               <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
                 <Ionicons name="locate" size={24} color="#fff" />
               </TouchableOpacity>
-              {/* Botón brújula */}
               <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
                 <Ionicons name="compass" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
 
-            {/* Buscador */}
             <View style={styles.searchContainer}>
               <View style={styles.searchBar}>
                 <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
@@ -226,6 +281,20 @@ export default function MainScreen() {
                 ))}
               </View>
             </View>
+
+            {selectedPlace && (
+              <View style={styles.placeCard}>
+                <Text style={styles.placeName}>{selectedPlace.name}</Text>
+                <Text style={styles.placeRating}>⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)</Text>
+                {selectedDistance && (
+                  <Text style={styles.placeDistance}>🚶 {selectedDistance.toFixed(1)} km</Text>
+                )}
+                <View style={styles.badges}>
+                  <Text style={styles.badge}>Celiaco</Text>
+                  <Text style={styles.badge}>Vegetariano</Text>
+                </View>
+              </View>
+            )}
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
@@ -249,17 +318,8 @@ export default function MainScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ff9500' },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchContainer: {
-    position: 'absolute',
-    top: 60,
-    width: '100%',
-    alignItems: 'center',
-  },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  searchContainer: { position: 'absolute', top: 60, width: '100%', alignItems: 'center' },
   searchBar: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -269,17 +329,8 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: 10,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 10,
-    color: '#000',
-  },
-  filters: {
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    width: '100%',
-    paddingHorizontal: 10,
-  },
+  searchInput: { flex: 1, marginLeft: 10, color: '#000' },
+  filters: { flexDirection: 'row', justifyContent: 'space-evenly', width: '100%', paddingHorizontal: 10 },
   filterButton: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -287,10 +338,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginHorizontal: 2,
   },
-  filterText: {
-    fontSize: 12,
-    color: '#000',
-  },
+  filterText: { fontSize: 12, color: '#000' },
   shadowOverlay: {
     position: 'absolute',
     bottom: 59,
@@ -325,13 +373,8 @@ const styles = StyleSheet.create({
     zIndex: 999,
     elevation: 5,
   },
-  predictionItem: {
-    padding: 10,
-  },
-  predictionText: {
-    fontSize: 16,
-    color: '#000',
-  },
+  predictionItem: { padding: 10 },
+  predictionText: { fontSize: 16, color: '#000' },
   floatingButtons: {
     position: 'absolute',
     bottom: 80,
@@ -345,5 +388,34 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 50,
     elevation: 3,
+  },
+  placeCard: {
+    position: 'absolute',
+    height: 120,
+    bottom: 90,
+    left: 40,
+    right: 40,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  placeName: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
+  placeRating: { fontSize: 14, color: '#333' },
+  placeDistance: { fontSize: 14, color: '#333', marginBottom: 8 },
+  badges: { flexDirection: 'row', gap: 8 },
+  badge: {
+    bottom:-10,
+    backgroundColor: '#ff9500',
+    color: 'white',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 12,
   },
 });
