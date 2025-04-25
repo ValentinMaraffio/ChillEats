@@ -26,6 +26,8 @@ const icon = require('../assets/img/icon-1.png');
 const googleLogo = require('../assets/img/googleLogo.png');
 const appleLogo = require('../assets/img/appleLogo.png');
 
+// ...imports no modificados
+
 export default function RegisterScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -46,7 +48,7 @@ export default function RegisterScreen() {
     }
 
     try {
-      const response = await fetch('http://192.168.0.18:8000/api/auth/signup', {
+      const response = await fetch('https://72f2-181-170-225-187.ngrok-free.app/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -61,8 +63,19 @@ export default function RegisterScreen() {
       const data = await response.json();
 
       if (response.ok) {
-        alert('Registro exitoso. Inicia sesión ahora.');
-        navigation.navigate('Login');
+        alert('Registro exitoso. Un código de verificación ha sido enviado a tu correo.');
+
+        // Enviar código de verificación
+        await fetch('https://72f2-181-170-225-187.ngrok-free.app/api/auth/send-verification-code', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        // Redirigir a la pantalla de verificación
+        navigation.navigate('Verification', { email });
       } else {
         alert(data.message || 'Error en el registro');
       }
@@ -227,6 +240,10 @@ const styles = StyleSheet.create({
     fontSize: wp('3.5%'),
     textAlign: 'center',
     textDecorationLine: 'underline',
+  },
+  verificationContainer: {
+    marginTop: hp('2%'),
+    alignItems: 'center',
   },
   dividerContainer: {
     flexDirection: 'row',

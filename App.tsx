@@ -7,6 +7,7 @@ import MainScreen from './screens/main';
 import LoginScreen from './screens/login';
 import RegisterScreen from './screens/register';
 import FavoritesScreen from './screens/favorites';
+import VerificationScreen from './screens/verification';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -20,6 +21,7 @@ export default function App() {
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
           <Stack.Screen name="Favorites" component={FavoritesScreen} />
+          <Stack.Screen name="Verification" component={VerificationScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
