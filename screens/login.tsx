@@ -12,11 +12,14 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../index';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useState } from 'react';
+import axios from 'axios';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 const icon = require('../assets/img/icon-1.png');
@@ -25,6 +28,26 @@ const appleLogo = require('../assets/img/appleLogo.png');
 
 export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleLogin = async () => {
+    try {
+      const res = await axios.post('http://192.168.0.18:8000/api/auth/signin', {
+        email,
+        password,
+      });
+
+      // Podés guardar el token si lo necesitás
+      // const token = res.data.token;
+
+      Alert.alert('Éxito', 'Sesión iniciada correctamente');
+      navigation.navigate('Main');
+    } catch (error: any) {
+      console.error(error.response?.data || error.message);
+      Alert.alert('Error', error.response?.data?.message || 'Ocurrió un error al iniciar sesión');
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -48,6 +71,9 @@ export default function LoginScreen() {
               placeholder="Email"
               placeholderTextColor="white"
               keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
             />
 
             <TextInput
@@ -55,11 +81,13 @@ export default function LoginScreen() {
               placeholder="Contraseña"
               placeholderTextColor="white"
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
             />
 
             <TouchableOpacity
               style={styles.loginButton}
-              onPress={() => alert('¡Botón presionado!')}
+              onPress={handleLogin}
             >
               <Text style={styles.buttonText}>Iniciar Sesión</Text>
             </TouchableOpacity>

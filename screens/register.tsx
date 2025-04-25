@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -28,6 +29,49 @@ const appleLogo = require('../assets/img/appleLogo.png');
 export default function RegisterScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const handleRegister = async () => {
+    if (!email || !password || !confirmPassword || !username) {
+      alert('Por favor completa todos los campos');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      alert('Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://192.168.0.18:8000/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Registro exitoso. Inicia sesión ahora.');
+        navigation.navigate('Login');
+      } else {
+        alert(data.message || 'Error en el registro');
+      }
+    } catch (error) {
+      console.error('Error al registrar:', error);
+      alert('No se pudo conectar con el servidor');
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -49,29 +93,37 @@ export default function RegisterScreen() {
               style={styles.TextInput}
               placeholder="Nombre de Usuario"
               placeholderTextColor="white"
+              value={username}
+              onChangeText={setUsername}
             />
             <TextInput
               style={styles.TextInput}
               placeholder="Email"
               placeholderTextColor="white"
               keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
             />
             <TextInput
               style={styles.TextInput}
               placeholder="Contraseña"
               placeholderTextColor="white"
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
             />
             <TextInput
               style={styles.TextInput}
               placeholder="Repetir Contraseña"
               placeholderTextColor="white"
               secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
             />
 
             <TouchableOpacity
               style={styles.signInButton}
-              onPress={() => alert('¡Botón presionado!')}
+              onPress={handleRegister}
             >
               <Text style={styles.buttonText}>Registrar</Text>
             </TouchableOpacity>
