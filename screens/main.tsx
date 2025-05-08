@@ -1,9 +1,9 @@
 import 'react-native-get-random-values';
-
 import React, { useEffect, useState, useRef } from 'react';
+import { Dimensions } from 'react-native';
 import {
   StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList,
+  Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList, 
 } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Camera } from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
+const { width, height } = Dimensions.get('window');
 const GOOGLE_API_KEY = 'AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4';
 
 interface Place {
@@ -38,7 +39,7 @@ export default function MainScreen() {
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
   const [hasSelectedPrediction, setHasSelectedPrediction] = useState(false);
   const mapRef = useRef<MapView>(null);
-  const markerPressRef = useRef(false); // <- NUEVO
+  const markerPressRef = useRef(false); 
 
   useEffect(() => {
     (async () => {
@@ -317,33 +318,57 @@ export default function MainScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ff9500' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  searchContainer: { position: 'absolute', top: 60, width: '100%', alignItems: 'center' },
+  container: {
+    flex: 1,
+    backgroundColor: '#ff9500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchContainer: {
+    position: 'absolute',
+    top: height * 0.07,
+    width: '100%',
+    alignItems: 'center',
+  },
   searchBar: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: width * 0.03,
     flexDirection: 'row',
     alignItems: 'center',
-    width: '90%',
-    height: 40,
-    marginBottom: 10,
+    width: width * 0.9,
+    height: height * 0.05,
+    marginBottom: height * 0.01,
   },
-  searchInput: { flex: 1, marginLeft: 10, color: '#000' },
-  filters: { flexDirection: 'row', justifyContent: 'space-evenly', width: '100%', paddingHorizontal: 10 },
+  searchInput: {
+    flex: 1,
+    marginLeft: width * 0.02,
+    color: '#000',
+  },
+  filters: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    width: '100%',
+    paddingHorizontal: width * 0.025,
+  },
   filterButton: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginHorizontal: 2,
+    borderRadius: width * 0.03,
+    paddingHorizontal: width * 0.03,
+    paddingVertical: height * 0.008,
+    marginHorizontal: width * 0.01,
   },
-  filterText: { fontSize: 12, color: '#000' },
+  filterText: {
+    fontSize: width * 0.032,
+    color: '#000',
+  },
   shadowOverlay: {
     position: 'absolute',
-    bottom: 59,
+    bottom: height * 0.074,
     width: '100%',
-    height: 3,
+    height: height * 0.004,
     backgroundColor: '#000',
     opacity: 0.5,
     zIndex: 9,
@@ -351,7 +376,7 @@ const styles = StyleSheet.create({
   bottomNav: {
     position: 'absolute',
     bottom: 0,
-    height: 60,
+    height: height * 0.075,
     width: '100%',
     backgroundColor: '#ff9500',
     flexDirection: 'row',
@@ -363,41 +388,46 @@ const styles = StyleSheet.create({
   },
   predictionList: {
     backgroundColor: 'white',
-    width: '90%',
-    maxHeight: 200,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 10,
+    width: width * 0.9,
+    maxHeight: height * 0.25,
+    borderRadius: width * 0.02,
+    marginTop: height * 0.01,
+    marginBottom: height * 0.01,
     position: 'absolute',
-    top: 100,
+    top: height * 0.12,
     zIndex: 999,
     elevation: 5,
   },
-  predictionItem: { padding: 10 },
-  predictionText: { fontSize: 16, color: '#000' },
+  predictionItem: {
+    padding: height * 0.012,
+  },
+  predictionText: {
+    fontSize: width * 0.042,
+    color: '#000',
+  },
   floatingButtons: {
     position: 'absolute',
-    bottom: 80,
-    right: 20,
+    bottom: height * 0.1,
+    right: width * 0.05,
     flexDirection: 'column',
     alignItems: 'flex-end',
-    gap: 10,
+    gap: height * 0.015,
   },
   floatButton: {
     backgroundColor: '#ff9500',
-    padding: 10,
+    padding: height * 0.012,
     borderRadius: 50,
     elevation: 3,
   },
   placeCard: {
     position: 'absolute',
-    height: 120,
-    bottom: 90,
-    left: 40,
-    right: 40,
+    height: height * 0.15,
+    bottom: height * 0.115,
+    left: width * 0.1,
+    right: width * 0.1,
     backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: width * 0.04,
+    padding: width * 0.04,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -405,17 +435,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     zIndex: 10,
   },
-  placeName: { fontSize: 18, fontWeight: 'bold', marginBottom: 6 },
-  placeRating: { fontSize: 14, color: '#333' },
-  placeDistance: { fontSize: 14, color: '#333', marginBottom: 8 },
-  badges: { flexDirection: 'row', gap: 8 },
+  placeName: {
+    fontSize: width * 0.045,
+    fontWeight: 'bold',
+    marginBottom: height * 0.005,
+  },
+  placeRating: {
+    fontSize: width * 0.035,
+    color: '#333',
+  },
+  placeDistance: {
+    fontSize: width * 0.035,
+    color: '#333',
+    marginBottom: height * 0.01,
+  },
+  badges: {
+    flexDirection: 'row',
+    gap: width * 0.02,
+  },
   badge: {
-    bottom:-10,
+    bottom: -height * 0.012,
     backgroundColor: '#ff9500',
     color: 'white',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    fontSize: 12,
+    borderRadius: width * 0.05,
+    paddingHorizontal: width * 0.04,
+    paddingVertical: height * 0.005,
+    fontSize: width * 0.04,
   },
 });
+
+
