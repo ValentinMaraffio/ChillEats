@@ -89,7 +89,7 @@ export default function MainScreen() {
       setHasSelectedPrediction(false);
       return;
     }
-
+    setPredictions([]);
     try {
       const response = await axios.get(`https://maps.googleapis.com/maps/api/place/textsearch/json`, {
         params: {
@@ -127,6 +127,21 @@ export default function MainScreen() {
     }
   };
 
+  const handleSelectPlace = (place: Place) => {
+    markerPressRef.current = true;
+
+    if (location) {
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        place.geometry.location.lat,
+        place.geometry.location.lng
+      );
+      setSelectedDistance(distance);
+    }
+    setSelectedPlace(place);
+  };
+
   const handleSelectPrediction = async (prediction: any) => {
     setSearchText(prediction.description);
     setPredictions([]);
@@ -154,7 +169,7 @@ export default function MainScreen() {
       };
 
       setPlaces([place]);
-      setSelectedPlace(place);
+      handleSelectPlace(place);
 
       mapRef.current?.animateToRegion({
         latitude: place.geometry.location.lat,
@@ -166,21 +181,6 @@ export default function MainScreen() {
     } catch (error) {
       Alert.alert('Error', 'No se pudo obtener la información del lugar');
     }
-  };
-
-  const handleSelectPlace = (place: Place) => {
-    markerPressRef.current = true; // <- NUEVO
-
-    if (location) {
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        place.geometry.location.lat,
-        place.geometry.location.lng
-      );
-      setSelectedDistance(distance);
-    }
-    setSelectedPlace(place);
   };
 
   if (!location) {
@@ -219,7 +219,7 @@ export default function MainScreen() {
                 if (markerPressRef.current) {
                   markerPressRef.current = false;
                 } else {
-                  setSelectedPlace(null); // <- Oculta la tarjeta
+                  setSelectedPlace(null);
                 }
               }}
             >
@@ -236,7 +236,7 @@ export default function MainScreen() {
               ))}
             </MapView>
 
-            <View style={styles.floatingButtons}>
+            <View style={[styles.floatingButtons, selectedPlace && { bottom: height * 0.25 }]}> {/* Subir si hay tarjeta */}
               <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
                 <Ionicons name="locate" size={24} color="#fff" />
               </TouchableOpacity>
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   predictionItem: {
-    padding: height * 0.012,
+    padding: height * 0.013,
   },
   predictionText: {
     fontSize: width * 0.042,
@@ -438,11 +438,13 @@ const styles = StyleSheet.create({
   placeName: {
     fontSize: width * 0.045,
     fontWeight: 'bold',
-    marginBottom: height * 0.005,
+    marginTop: height * -0.006,
+    marginBottom: height * 0.004,
   },
   placeRating: {
     fontSize: width * 0.035,
     color: '#333',
+    marginBottom: height * 0.001,
   },
   placeDistance: {
     fontSize: width * 0.035,
@@ -454,12 +456,12 @@ const styles = StyleSheet.create({
     gap: width * 0.02,
   },
   badge: {
-    bottom: -height * 0.012,
+    bottom: -height * -0.005,
     backgroundColor: '#ff9500',
     color: 'white',
     borderRadius: width * 0.05,
     paddingHorizontal: width * 0.04,
-    paddingVertical: height * 0.005,
+    paddingVertical: height * 0.004,
     fontSize: width * 0.04,
   },
 });
