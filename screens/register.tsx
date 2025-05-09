@@ -48,7 +48,7 @@ export default function RegisterScreen() {
     }
 
     try {
-      const response = await fetch('https://72f2-181-170-225-187.ngrok-free.app/api/auth/signup', {
+      const response = await fetch('http://172.16.5.248:8000/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export default function RegisterScreen() {
         alert('Registro exitoso. Un código de verificación ha sido enviado a tu correo.');
 
         // Enviar código de verificación
-        await fetch('https://72f2-181-170-225-187.ngrok-free.app/api/auth/send-verification-code', {
+        await fetch('http://172.16.5.248:8000/api/auth/send-verification-code', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

@@ -11,14 +11,17 @@ import {
 } from 'react-native';
 import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { RootStackParamList } from '../App';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
+import { useAuth } from '../context/authContext';
 
-// Datos de ejemplo
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const data = [
   {
     id: '1',
@@ -29,36 +32,9 @@ const data = [
     icon: 'pizza-slice',
   },
 ];
-const data1 = [
-  {
-    id: '2',
-    name: 'Pier',
-    rating: 4.8,
-    reviews: 500,
-    distance: '4.8 km',
-    icon: 'pizza-slice',
-  },
-];
-const data2 = [
-  {
-    id: '2',
-    name: 'Pier',
-    rating: 4.8,
-    reviews: 500,
-    distance: '4.8 km',
-    icon: 'pizza-slice',
-  },
-];
-const data3 = [
-  {
-    id: '2',
-    name: 'Pier',
-    rating: 4.8,
-    reviews: 500,
-    distance: '4.8 km',
-    icon: 'pizza-slice',
-  },
-];
+const data1 = [...data];
+const data2 = [...data];
+const data3 = [...data];
 
 const Tag = ({ label }: { label: string }) => (
   <View style={{ backgroundColor: '#FFBB5C', paddingHorizontal: 6, paddingVertical: 2, marginRight: 5, borderRadius: 5 }}>
@@ -67,7 +43,8 @@ const Tag = ({ label }: { label: string }) => (
 );
 
 export default function RestaurantsScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
 
   const renderRestaurant = ({ item }: any) => (
     <View style={styles.card}>
@@ -95,58 +72,47 @@ export default function RestaurantsScreen() {
         resizeMode="repeat"
         imageStyle={{ opacity: 0.3 }}
       >
-        {/* Filtros */}
         <View style={styles.filters}>
-                       {['Localidad', 'Limitación', 'Precio', 'Local'].map((filter, index) => (
-                         <TouchableOpacity key={index} style={styles.filterButton}>
-                           <Text style={styles.filterText}>{filter}</Text>
-                         </TouchableOpacity>
-                       ))}
-                     </View>
+          {['Localidad', 'Limitación', 'Precio', 'Local'].map((filter, index) => (
+            <TouchableOpacity key={index} style={styles.filterButton}>
+              <Text style={styles.filterText}>{filter}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-        {/* Listas */}
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          <FlatList
-            data={data}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            renderItem={renderRestaurant}
-          />
-          <FlatList
-            data={data1}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            renderItem={renderRestaurant}
-          />
-          <FlatList
-            data={data2}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            renderItem={renderRestaurant}
-          />
-          <FlatList
-            data={data3}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            renderItem={renderRestaurant}
-          />
+          <FlatList data={data} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
+          <FlatList data={data1} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
+          <FlatList data={data2} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
+          <FlatList data={data3} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
         </ScrollView>
 
-        {/* Bottom Navigation */}
         <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-          <FontAwesome name="home" size={wp('7%')} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+            <FontAwesome name="home" size={wp('7%')} color="white" />
+          </TouchableOpacity>
 
-        <TouchableOpacity >
-          <FontAwesome name="heart" size={wp('7%')} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity>
+            <FontAwesome name="heart" size={wp('7%')} color="white" />
+          </TouchableOpacity>
 
-        <TouchableOpacity onPress={()=> navigation.navigate('Login')}>
-          <FontAwesome name="user" size={wp('7%')} color="white" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (user) {
+                navigation.navigate('Profile', {
+                  username: user.username,
+                  email: user.email,
+                });
+              } else {
+                navigation.navigate('Login');
+              }
+            }}
+          >
+            <FontAwesome name="user" size={wp('7%')} color="white" />
+          </TouchableOpacity>
         </View>
       </ImageBackground>
+      <StatusBar style="light" />
     </SafeAreaView>
   );
 }
@@ -164,7 +130,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-evenly',
     width: '100%',
     paddingHorizontal: 10,
-    marginTop:hp('6%'),
+    marginTop: hp('6%'),
   },
   filterButton: {
     backgroundColor: 'white',
@@ -177,20 +143,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000',
   },
-  picker: {
-    width: 100,
-    height: 100,
-  },
   card: {
     backgroundColor: '#fff',
-    marginVertical: 12, // Aumenta la separación entre cards
-    padding: 30, // Más espacio interno  
+    marginVertical: 12,
+    padding: 30,
     borderRadius: 30,
     elevation: 5,
-    marginTop:hp('5%'),
-    width: '80%',        // ← ancho relativo al contenedor
-    alignSelf: 'center', // ← centra la card horizontalmente
-    shadowColor: '#000000'
+    marginTop: hp('5%'),
+    width: '80%',
+    alignSelf: 'center',
+    shadowColor: '#000000',
   },
   cardContent: {
     flexDirection: 'row',
@@ -204,10 +166,8 @@ const styles = StyleSheet.create({
     color: '#555',
   },
   tagsRow: {
-    
     flexDirection: 'row',
     marginTop: 5,
-    
   },
   cardIcon: {
     marginLeft: 10,

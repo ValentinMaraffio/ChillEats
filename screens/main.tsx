@@ -1,16 +1,13 @@
 import 'react-native-get-random-values';
 import React, { useEffect, useState, useRef } from 'react';
-import { Dimensions } from 'react-native';
-import {
-  StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator,
-  Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList, 
-} from 'react-native';
+import { Dimensions, StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Camera } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../types/navigation';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation';
+import { useAuth } from '../context/authContext'; // ✅ NUEVO
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
@@ -30,8 +27,9 @@ interface Place {
 }
 
 export default function MainScreen() {
-   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user } = useAuth(); // ✅ NUEVO
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -40,7 +38,7 @@ export default function MainScreen() {
   const [selectedDistance, setSelectedDistance] = useState<number | null>(null);
   const [hasSelectedPrediction, setHasSelectedPrediction] = useState(false);
   const mapRef = useRef<MapView>(null);
-  const markerPressRef = useRef(false); 
+  const markerPressRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -52,20 +50,14 @@ export default function MainScreen() {
       let currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
     })();
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-      setIsKeyboardVisible(true);
-    });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setIsKeyboardVisible(false);
-    });
-   
-  
+
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
-      
     };
-    
   }, []);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -74,9 +66,9 @@ export default function MainScreen() {
     const dLat = toRad(lat2 - lat1);
     const dLon = toRad(lon2 - lon1);
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLat / 2) ** 2 +
       Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
@@ -144,7 +136,6 @@ export default function MainScreen() {
 
   const handleSelectPlace = (place: Place) => {
     markerPressRef.current = true;
-
     if (location) {
       const distance = calculateDistance(
         location.latitude,
@@ -251,17 +242,16 @@ export default function MainScreen() {
               ))}
             </MapView>
 
-                {!isKeyboardVisible && !selectedPlace && (
-                  <View style={styles.floatingButtons}>
-                    <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
-                      <Ionicons name="locate" size={24} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
-                      <Ionicons name="compass" size={24} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                )}
-
+            {!isKeyboardVisible && !selectedPlace && (
+              <View style={styles.floatingButtons}>
+                <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
+                  <Ionicons name="locate" size={24} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
+                  <Ionicons name="compass" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.searchContainer}>
               <View style={styles.searchBar}>
@@ -301,37 +291,47 @@ export default function MainScreen() {
               </View>
             </View>
 
-          
             {selectedPlace && !isKeyboardVisible && (
-  <View style={styles.placeCard}>
-    <Text style={styles.placeName}>{selectedPlace.name}</Text>
-    <Text style={styles.placeRating}>⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)</Text>
-    {selectedDistance && (
-      <Text style={styles.placeDistance}>🚶 {selectedDistance.toFixed(1)} km</Text>
-    )}
-    <View style={styles.badges}>
-      <Text style={styles.badge}>Celiaco</Text>
-      <Text style={styles.badge}>Vegetariano</Text>
-    </View>
-  </View>
-)}
+              <View style={styles.placeCard}>
+                <Text style={styles.placeName}>{selectedPlace.name}</Text>
+                <Text style={styles.placeRating}>⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)</Text>
+                {selectedDistance && (
+                  <Text style={styles.placeDistance}>🚶 {selectedDistance.toFixed(1)} km</Text>
+                )}
+                <View style={styles.badges}>
+                  <Text style={styles.badge}>Celiaco</Text>
+                  <Text style={styles.badge}>Vegetariano</Text>
+                </View>
+              </View>
+            )}
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-{!isKeyboardVisible && (
-  <View style={styles.bottomNav}>
-    <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-      <FontAwesome name="home" size={28} color="white" />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
-      <FontAwesome name="heart" size={28} color="white" />
-    </TouchableOpacity>
-    <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-      <FontAwesome name="user" size={28} color="white" />
-    </TouchableOpacity>
-  </View>
-)}
+      {!isKeyboardVisible && (
+        <View style={styles.bottomNav}>
+          <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+            <FontAwesome name="home" size={28} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
+            <FontAwesome name="heart" size={28} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (user) {
+                navigation.navigate('Profile', {
+                  username: user.username,
+                  email: user.email,
+                });
+              } else {
+                navigation.navigate('Login');
+              }
+            }}
+          >
+            <FontAwesome name="user" size={28} color="white" />
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

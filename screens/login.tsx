@@ -16,11 +16,30 @@ import {
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../index';
+import { RootStackParamList } from '../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import axios from 'axios';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { useAuth } from '../context/authContext';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+function parseJwt(token: string) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return {};
+  }
+}
+
 
 const icon = require('../assets/img/icon-1.png');
 const googleLogo = require('../assets/img/googleLogo.png');
@@ -30,24 +49,21 @@ export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const { login } = useAuth();
 
   const handleLogin = async () => {
-    try {
-      const res = await axios.post('https://72f2-181-170-225-187.ngrok-free.app/api/auth/signin', {
-        email,
-        password,
-      });
-
-      // Podés guardar el token si lo necesitás
-      // const token = res.data.token;
-
-      Alert.alert('Éxito', 'Sesión iniciada correctamente');
-      navigation.navigate('Main');
-    } catch (error: any) {
-      console.error(error.response?.data || error.message);
-      Alert.alert('Error', error.response?.data?.message || 'Ocurrió un error al iniciar sesión');
-    }
-  };
+  try {
+    const res = await axios.post('http://172.16.5.248:8000/api/auth/signin', { email, password });
+    const token = res.data.token;
+    await login(token);
+    navigation.navigate('Profile', {
+      username: parseJwt(token).username,
+      email: parseJwt(token).email,
+    });
+  } catch (error: any) {
+    Alert.alert('Error', error.response?.data?.message || 'Ocurrió un error');
+  }
+};
 
   return (
     <KeyboardAvoidingView

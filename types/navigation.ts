@@ -4,4 +4,8 @@ export type RootStackParamList = {
   Register: undefined;
   Favorites: undefined;
   Verification: { email: string };  // Asegúrate de que el tipo de email esté correcto
+  Profile: {
+    username: string;
+    email: string;
+  };
 };
