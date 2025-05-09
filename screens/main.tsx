@@ -30,6 +30,7 @@ interface Place {
 }
 
 export default function MainScreen() {
+   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null);
   const [places, setPlaces] = useState<Place[]>([]);
@@ -51,6 +52,20 @@ export default function MainScreen() {
       let currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
     })();
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false);
+    });
+   
+  
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+      
+    };
+    
   }, []);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -236,14 +251,17 @@ export default function MainScreen() {
               ))}
             </MapView>
 
-            <View style={[styles.floatingButtons, selectedPlace && { bottom: height * 0.25 }]}> {/* Subir si hay tarjeta */}
-              <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
-                <Ionicons name="locate" size={24} color="#fff" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
-                <Ionicons name="compass" size={24} color="#fff" />
-              </TouchableOpacity>
-            </View>
+                {!isKeyboardVisible && !selectedPlace && (
+                  <View style={styles.floatingButtons}>
+                    <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
+                      <Ionicons name="locate" size={24} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
+                      <Ionicons name="compass" size={24} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
 
             <View style={styles.searchContainer}>
               <View style={styles.searchBar}>
@@ -283,36 +301,37 @@ export default function MainScreen() {
               </View>
             </View>
 
-            {selectedPlace && (
-              <View style={styles.placeCard}>
-                <Text style={styles.placeName}>{selectedPlace.name}</Text>
-                <Text style={styles.placeRating}>⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)</Text>
-                {selectedDistance && (
-                  <Text style={styles.placeDistance}>🚶 {selectedDistance.toFixed(1)} km</Text>
-                )}
-                <View style={styles.badges}>
-                  <Text style={styles.badge}>Celiaco</Text>
-                  <Text style={styles.badge}>Vegetariano</Text>
-                </View>
-              </View>
-            )}
+          
+            {selectedPlace && !isKeyboardVisible && (
+  <View style={styles.placeCard}>
+    <Text style={styles.placeName}>{selectedPlace.name}</Text>
+    <Text style={styles.placeRating}>⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)</Text>
+    {selectedDistance && (
+      <Text style={styles.placeDistance}>🚶 {selectedDistance.toFixed(1)} km</Text>
+    )}
+    <View style={styles.badges}>
+      <Text style={styles.badge}>Celiaco</Text>
+      <Text style={styles.badge}>Vegetariano</Text>
+    </View>
+  </View>
+)}
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      <View style={styles.shadowOverlay} />
-
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-          <FontAwesome name="home" size={28} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
-          <FontAwesome name="heart" size={28} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <FontAwesome name="user" size={28} color="white" />
-        </TouchableOpacity>
-      </View>
+{!isKeyboardVisible && (
+  <View style={styles.bottomNav}>
+    <TouchableOpacity onPress={() => navigation.navigate('Main')}>
+      <FontAwesome name="home" size={28} color="white" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
+      <FontAwesome name="heart" size={28} color="white" />
+    </TouchableOpacity>
+    <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+      <FontAwesome name="user" size={28} color="white" />
+    </TouchableOpacity>
+  </View>
+)}
     </SafeAreaView>
   );
 }
