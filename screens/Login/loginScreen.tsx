@@ -1,6 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
 import {
-  StyleSheet,
   TouchableOpacity,
   Text,
   View,
@@ -12,58 +11,46 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
-  Alert,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../../types/navigation';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import axios from 'axios';
-import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { useAuth } from '../../context/authContext';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-function parseJwt(token: string) {
-  try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return {};
-  }
-}
-
-
-const icon = require('../../assets/img/icon-1.png');
-const googleLogo = require('../../assets/img/googleLogo.png');
-const appleLogo = require('../../assets/img/appleLogo.png');
+import { 
+  icon, 
+  googleLogo, 
+  appleLogo, 
+  LoginNavigationProp 
+} from './loginBackend';
+import { styles } from './loginStyles';
+import axios from 'axios';
+import { parseJwt } from './loginBackend';
 
 export default function LoginScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<LoginNavigationProp>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login } = useAuth();
 
+  // Modified to handle the login directly in this component
   const handleLogin = async () => {
-  try {
-    const res = await axios.post('http://172.16.1.95:8000/api/auth/signin', { email, password });
-    const token = res.data.token;
-    await login(token);
-    navigation.navigate('Profile', {
-      username: parseJwt(token).username,
-      email: parseJwt(token).email,
-    });
-  } catch (error: any) {
-    Alert.alert('Error', error.response?.data?.message || 'Ocurrió un error');
-  }
-};
+    try {
+      const res = await axios.post('http://172.16.1.95:8000/api/auth/signin', { email, password });
+      const token = res.data.token;
+      
+      // Wrap the login call in a Promise if it doesn't return one
+      await Promise.resolve(login(token));
+      
+      navigation.navigate('Profile', {
+        username: parseJwt(token).username,
+        email: parseJwt(token).email,
+      });
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Ocurrió un error');
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -78,7 +65,7 @@ export default function LoginScreen() {
           <View style={styles.content}>
             <Image
               source={icon}
-              style={{ width: wp('50%'), height: wp('50%'), marginTop: hp('10%') }}
+              style={styles.iconStyle}
               resizeMode="contain"
             />
 
@@ -120,7 +107,7 @@ export default function LoginScreen() {
               style={styles.continueButton}
               onPress={() => alert('¡Botón presionado!')}
             >
-              <Image source={googleLogo} style={{ width: wp('7%'), height: wp('7%') }} />
+              <Image source={googleLogo} style={styles.socialIconStyle} />
               <Text style={styles.buttonText}>Continuar con Google</Text>
             </TouchableOpacity>
 
@@ -128,7 +115,7 @@ export default function LoginScreen() {
               style={styles.continueButton}
               onPress={() => alert('¡Botón presionado!')}
             >
-              <Image source={appleLogo} style={{ width: wp('7%'), height: wp('7%') }} />
+              <Image source={appleLogo} style={styles.socialIconStyle} />
               <Text style={styles.buttonText}>Continuar con Apple</Text>
             </TouchableOpacity>
           </View>
@@ -153,75 +140,3 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  scrollContent: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingBottom: hp('15%'),
-    backgroundColor: '#ff9500',
-    width: '100%',
-  },
-  content: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: '100%',
-  },
-  TextInput: {
-    borderBottomWidth: 1,
-    borderColor: 'white',
-    width: wp('80%'),
-    marginTop: hp('2.5%'),
-    color: 'white',
-    paddingVertical: hp('0.5%'),
-  },
-  loginButton: {
-    backgroundColor: 'white',
-    paddingVertical: hp('2%'),
-    borderRadius: wp('8%'),
-    marginTop: hp('2.5%'),
-    width: wp('50%'),
-  },
-  buttonText: {
-    color: 'black',
-    fontWeight: 'bold',
-    fontSize: wp('4%'),
-    textAlign: 'center',
-  },
-  forgotText: {
-    color: 'white',
-    margin: hp('2%'),
-    fontSize: wp('3.5%'),
-    textDecorationLine: 'underline',
-  },
-  registerText: {
-    color: 'white',
-    fontSize: wp('3.5%'),
-    textDecorationLine: 'underline',
-    marginBottom: hp('2%'),
-  },
-  continueButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-    paddingVertical: hp('1.2%'),
-    borderRadius: wp('2%'),
-    marginTop: hp('1.5%'),
-    width: wp('90%'),
-    gap: wp('2%'),
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: hp('1.5%'),
-    borderTopWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#ff9500',
-  },
-});

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
-  StyleSheet,
   TouchableOpacity,
   Text,
   View,
@@ -12,24 +11,26 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import type { RootStackParamList } from "../../types/navigation"
 import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   widthPercentageToDP as wp,
-  heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 
-const icon = require('../../assets/img/icon-1.png');
-const googleLogo = require('../../assets/img/googleLogo.png');
-const appleLogo = require('../../assets/img/appleLogo.png');
-
-// ...imports no modificados
+import { 
+  RegisterNavigationProp, 
+  icon, 
+  googleLogo, 
+  appleLogo,
+  validateForm,
+  registerUser
+} from './registerBackend';
+import { styles } from './registerStyles';
 
 export default function RegisterScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<RegisterNavigationProp>();
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -37,51 +38,20 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword || !username) {
-      alert('Por favor completa todos los campos');
+    // Validate form
+    const validation = validateForm(username, email, password, confirmPassword);
+    if (!validation.isValid) {
+      Alert.alert('Error', validation.message);
       return;
     }
 
-    if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden');
-      return;
-    }
-
-    try {
-      const response = await fetch('http://172.16.1.95:8000/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert('Registro exitoso. Un código de verificación ha sido enviado a tu correo.');
-
-        // Enviar código de verificación
-        await fetch('http://172.16.1.95:8000/api/auth/send-verification-code', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
-        });
-
-        // Redirigir a la pantalla de verificación
-        navigation.navigate('Verification', { email });
-      } else {
-        alert(data.message || 'Error en el registro');
-      }
-    } catch (error) {
-      console.error('Error al registrar:', error);
-      alert('No se pudo conectar con el servidor');
+    // Register user
+    const result = await registerUser(username, email, password);
+    Alert.alert(result.success ? 'Éxito' : 'Error', result.message);
+    
+    if (result.success) {
+      // Navigate to verification screen
+      navigation.navigate('Verification', { email });
     }
   };
 
@@ -98,7 +68,7 @@ export default function RegisterScreen() {
           <View style={styles.container}>
             <Image
               source={icon}
-              style={{ width: wp('40%'), height: wp('40%'), marginTop: hp('6%') }}
+              style={styles.iconStyle}
               resizeMode="contain"
             />
 
@@ -116,6 +86,7 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              autoCapitalize="none"
             />
             <TextInput
               style={styles.TextInput}
@@ -158,7 +129,7 @@ export default function RegisterScreen() {
               style={styles.continueButton}
               onPress={() => alert('¡Botón presionado!')}
             >
-              <Image source={googleLogo} style={{ width: wp('7%'), height: wp('7%') }} />
+              <Image source={googleLogo} style={styles.socialIconStyle} />
               <Text style={styles.buttonText}>Continuar con Google</Text>
             </TouchableOpacity>
 
@@ -166,7 +137,7 @@ export default function RegisterScreen() {
               style={styles.continueButton}
               onPress={() => alert('¡Botón presionado!')}
             >
-              <Image source={appleLogo} style={{ width: wp('7%'), height: wp('7%') }} />
+              <Image source={appleLogo} style={styles.socialIconStyle} />
               <Text style={styles.buttonText}>Continuar con Apple</Text>
             </TouchableOpacity>
 
@@ -195,103 +166,3 @@ export default function RegisterScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ff9500',
-    alignItems: 'center',
-    paddingBottom: hp('4%'),
-    width: '100%',
-  },
-  scrollContent: {
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingBottom: hp('15%'),
-    backgroundColor: '#ff9500',
-  },
-  TextInput: {
-    borderBottomWidth: 1,
-    borderColor: 'white',
-    width: wp('80%'),
-    marginTop: hp('2.5%'),
-    color: 'white',
-    paddingVertical: hp('0.5%'),
-  },
-  signInButton: {
-    backgroundColor: 'white',
-    paddingVertical: hp('2%'),
-    borderRadius: wp('8%'),
-    marginTop: hp('2.5%'),
-    width: wp('50%'),
-    display: 'flex',
-  },
-  login: {
-    marginTop: hp('1.2%'),
-  },
-  buttonText: {
-    color: 'black',
-    fontWeight: 'bold',
-    fontSize: wp('4%'),
-    textAlign: 'center',
-  },
-  buttonTextLogin: {
-    color: 'white',
-    fontWeight: '400',
-    fontSize: wp('3.5%'),
-    textAlign: 'center',
-    textDecorationLine: 'underline',
-  },
-  verificationContainer: {
-    marginTop: hp('2%'),
-    alignItems: 'center',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: hp('2%'),
-    width: wp('80%'),
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#fff',
-    opacity: 0.6,
-  },
-  dividerText: {
-    marginHorizontal: wp('2.5%'),
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  continueButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-    paddingVertical: hp('1.2%'),
-    borderRadius: wp('2%'),
-    marginTop: hp('1.5%'),
-    width: wp('90%'),
-    gap: wp('2%'),
-  },
-  TermsText: {
-    color: 'white',
-    textAlign: 'center',
-    width: wp('80%'),
-    marginTop: hp('2.5%'),
-    fontSize: wp('3.2%'),
-    lineHeight: hp('2.8%'),
-  },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: hp('1.5%'),
-    borderTopWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#ff9500',
-  },
-});

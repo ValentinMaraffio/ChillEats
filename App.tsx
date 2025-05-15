@@ -4,11 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types/navigation';
 import MainScreen from './screens/Main/mainScreen';
-import LoginScreen from './screens/Login/login';
-import RegisterScreen from './screens/Register/register';
-import FavoritesScreen from './screens/Favorites/favorites';
-import VerificationScreen from './screens/Verification/verification';
-import ProfileScreen from './screens/Profile/profile';
+import LoginScreen from './screens/Login/loginScreen';
+import RegisterScreen from './screens/Register/registerScreen';
+import FavoritesScreen from './screens/Favorites/favoritesScreen';
+import VerificationScreen from './screens/Verification/verificationScreen';
+import ProfileScreen from './screens/Profile/profileScreen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './context/authContext';
 
