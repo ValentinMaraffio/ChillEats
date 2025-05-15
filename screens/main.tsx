@@ -1,23 +1,7 @@
-"use client"
-
 import "react-native-get-random-values"
 import { useEffect, useState, useRef } from "react"
-import {
-  Dimensions,
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  SafeAreaView,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-  FlatList,
-  Animated,
+import { Dimensions, StyleSheet, View,
+  Text, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList, Animated,
 } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
 import * as Location from "expo-location"
@@ -66,6 +50,7 @@ export default function MainScreen() {
   const [isScrolling, setIsScrolling] = useState(false)
   const swipeStartX = useRef(0)
   const [visibleCards, setVisibleCards] = useState<Place[]>([])
+  const isFirstSelectionRef = useRef(true)
 
   // Sort places by distance from user's location
   const getSortedPlacesByUserLocation = (): Place[] => {
@@ -172,6 +157,25 @@ export default function MainScreen() {
     )
   }
 
+  // Reset the map to initial state
+  const resetMap = () => {
+    setPlaces([])
+    setSelectedPlace(null)
+    setNearbyPlacesList([])
+    setVisibleCards([])
+    setPredictions([]) // Clear predictions when resetting the map
+
+    // Center map on user's location
+    if (location) {
+      mapRef.current?.animateToRegion({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      })
+    }
+  }
+
   // Navigate to the next or previous place
   const navigateToPlace = (direction: "next" | "prev") => {
     if (!nearbyPlacesList.length || isScrolling) return
@@ -193,14 +197,14 @@ export default function MainScreen() {
     setSelectedPlace(place)
     centerMapOnPlace(place)
 
-    // Reset the FlatList to show the middle card
+    // Reset the FlatList to show the middle card with a consistent position
     setTimeout(() => {
       flatListRef.current?.scrollToIndex({
         index: 1,
         animated: false,
         viewPosition: 0.5,
       })
-      
+
       // Reset scrolling state after animation completes
       setTimeout(() => {
         setIsScrolling(false)
@@ -216,7 +220,7 @@ export default function MainScreen() {
     const offsetX = event.nativeEvent.contentOffset.x
     const viewSize = ITEM_WIDTH + SPACING * 2
     const index = Math.round(offsetX / viewSize)
-    
+
     // Determine if we need to navigate
     if (index === 0) {
       // Swiped to previous
@@ -225,7 +229,7 @@ export default function MainScreen() {
       // Swiped to next
       navigateToPlace("next")
     }
-    
+
     // Always reset to center position after scrolling
     setTimeout(() => {
       flatListRef.current?.scrollToIndex({
@@ -237,12 +241,22 @@ export default function MainScreen() {
   }
 
   const handleSearch = async () => {
-    if (!searchText || !location) return
+    // If search text is empty, reset the map to initial state
+    if (!searchText || !searchText.trim()) {
+      resetMap()
+      return
+    }
+
+    if (!location) return
+
     if (hasSelectedPrediction) {
       setHasSelectedPrediction(false)
       return
     }
+
     setPredictions([])
+    isFirstSelectionRef.current = true
+
     try {
       const response = await axios.get(`https://maps.googleapis.com/maps/api/place/textsearch/json`, {
         params: {
@@ -252,17 +266,55 @@ export default function MainScreen() {
           key: GOOGLE_API_KEY,
         },
       })
-      setPlaces(response.data.results)
+
+      // Clear any previously selected place
       setSelectedPlace(null)
+
+      // Set the places from search results
+      setPlaces(response.data.results)
 
       // Sort places by distance from user and set the list
       const sortedPlaces = getSortedPlacesByUserLocation()
       setNearbyPlacesList(sortedPlaces)
 
+      // If we have results, adjust the map to show all markers
       if (sortedPlaces.length > 0) {
-        setSelectedPlace(sortedPlaces[0])
-        setCurrentIndex(0)
-        centerMapOnPlace(sortedPlaces[0])
+        // Don't automatically select the first place
+        // Just center the map to show all markers
+        if (location && sortedPlaces.length > 0) {
+          // Find the average position of all places to center the map
+          let sumLat = 0
+          let sumLng = 0
+          let maxDist = 0
+
+          sortedPlaces.forEach((place) => {
+            sumLat += place.geometry.location.lat
+            sumLng += place.geometry.location.lng
+
+            // Calculate distance from user to determine zoom level
+            const dist = calculateDistance(
+              location.latitude,
+              location.longitude,
+              place.geometry.location.lat,
+              place.geometry.location.lng,
+            )
+
+            if (dist > maxDist) maxDist = dist
+          })
+
+          const avgLat = sumLat / sortedPlaces.length
+          const avgLng = sumLng / sortedPlaces.length
+
+          // Adjust delta based on the maximum distance
+          const delta = Math.min(0.05, Math.max(0.01, maxDist * 0.05))
+
+          mapRef.current?.animateToRegion({
+            latitude: avgLat,
+            longitude: avgLng,
+            latitudeDelta: delta,
+            longitudeDelta: delta,
+          })
+        }
       }
     } catch (error) {
       Alert.alert("Error", "No se pudieron obtener los resultados de búsqueda")
@@ -308,7 +360,30 @@ export default function MainScreen() {
 
     if (index >= 0) {
       setCurrentIndex(index)
-      // The useEffect will update the visible cards
+
+      // Use a longer delay for the first selection
+      const delay = isFirstSelectionRef.current ? 300 : 50
+
+      // Wait for the visible cards to update before scrolling
+      setTimeout(() => {
+        flatListRef.current?.scrollToIndex({
+          index: 1, // Always scroll to the middle card
+          animated: false,
+          viewPosition: 0.5,
+        })
+
+        // Try a second scroll after a short delay to ensure it's centered
+        if (isFirstSelectionRef.current) {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: 1,
+              animated: false,
+              viewPosition: 0.5,
+            })
+            isFirstSelectionRef.current = false
+          }, 200)
+        }
+      }, delay)
     }
   }
 
@@ -426,7 +501,15 @@ export default function MainScreen() {
                   value={searchText}
                   onChangeText={(text) => {
                     setSearchText(text)
-                    handleAutocomplete(text)
+
+                    // If text is cleared, reset the map and clear predictions
+                    if (!text || text.trim() === "") {
+                      resetMap()
+                      setPredictions([]) // Explicitly clear predictions
+                    } else {
+                      // Only fetch autocomplete if there's text
+                      handleAutocomplete(text)
+                    }
                   }}
                   onSubmitEditing={handleSearch}
                 />
@@ -484,8 +567,8 @@ export default function MainScreen() {
                             }
                           }}
                           style={[
-                            styles.carouselCard, 
-                            isSelected ? styles.carouselCardSelected : styles.carouselCardNotSelected
+                            styles.carouselCard,
+                            isSelected ? styles.carouselCardSelected : styles.carouselCardNotSelected,
                           ]}
                         >
                           <Text style={styles.placeName}>{item.name}</Text>
@@ -515,7 +598,9 @@ export default function MainScreen() {
                     snapToInterval={ITEM_WIDTH + SPACING * 2}
                     snapToAlignment="center"
                     decelerationRate="fast"
-                    contentContainerStyle={{ paddingHorizontal: width * 0.1 }}
+                    contentContainerStyle={{
+                      paddingHorizontal: (width - ITEM_WIDTH) / 2 - SPACING, // This centers the cards properly
+                    }}
                     onScrollBeginDrag={handleScrollBegin}
                     onMomentumScrollEnd={handleScrollEnd}
                     pagingEnabled={true}
@@ -714,6 +799,7 @@ const styles = StyleSheet.create({
     bottom: height * 0.115,
     height: height * 0.18,
     width: "100%",
+    alignItems: "center", // Add this to center the FlatList
   },
   carouselCard: {
     width: width * 0.75,
@@ -741,13 +827,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 8,
   },
-  badge: {
-    backgroundColor: "#eee",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontSize: 12,
-  },
   carouselNavigation: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -769,5 +848,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
+  },
+  badge: {
+    backgroundColor: "#eee",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
   },
 })

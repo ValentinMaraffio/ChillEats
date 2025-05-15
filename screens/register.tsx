@@ -14,7 +14,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import { RootStackParamList } from '../index';
+import type { RootStackParamList } from "../types/navigation"
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -48,7 +48,7 @@ export default function RegisterScreen() {
     }
 
     try {
-      const response = await fetch('http://172.16.5.248:8000/api/auth/signup', {
+      const response = await fetch('http://172.16.1.95:8000/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export default function RegisterScreen() {
         alert('Registro exitoso. Un código de verificación ha sido enviado a tu correo.');
 
         // Enviar código de verificación
-        await fetch('http://172.16.5.248:8000/api/auth/send-verification-code', {
+        await fetch('http://172.16.1.95:8000/api/auth/send-verification-code', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

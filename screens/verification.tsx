@@ -7,14 +7,15 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../index';
+import type { RootStackParamList } from "../types/navigation"
 import { FontAwesome } from '@expo/vector-icons';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
+
 
 type VerificationScreenRouteProp = {
   params: {
@@ -24,7 +25,7 @@ type VerificationScreenRouteProp = {
 
 export default function VerificationScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<VerificationScreenRouteProp>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Verification'>>();
   const { email } = route.params;
 
   const [code, setCode] = useState('');
@@ -47,7 +48,7 @@ export default function VerificationScreen() {
     }
 
     try {
-      const response = await fetch('https://72f2-181-170-225-187.ngrok-free.app/api/auth/verify-verification-code', {
+      const response = await fetch('http://172.16.1.95:8000/api/auth/verify-verification-code', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +77,7 @@ export default function VerificationScreen() {
     if (resendCooldown > 0) return;
 
     try {
-      const response = await fetch('https://72f2-181-170-225-187.ngrok-free.app/api/auth/send-verification-code', {
+      const response = await fetch('http://172.16.1.95:8000/api/auth/send-verification-code', {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
