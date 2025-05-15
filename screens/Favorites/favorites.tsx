@@ -13,12 +13,12 @@ import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types/navigation';
+import { RootStackParamList } from '../../types/navigation';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
-import { useAuth } from '../context/authContext';
+import { useAuth } from '../../context/authContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -67,7 +67,7 @@ export default function RestaurantsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ImageBackground
-        source={require('../assets/img/fast-food-bg.jpg')}
+        source={require('../../assets/img/fast-food-bg.jpg')}
         style={styles.background}
         resizeMode="repeat"
         imageStyle={{ opacity: 0.3 }}

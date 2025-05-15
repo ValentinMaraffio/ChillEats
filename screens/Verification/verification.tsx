@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from "../types/navigation"
+import type { RootStackParamList } from "../../types/navigation"
 import { FontAwesome } from '@expo/vector-icons';
 import {
   widthPercentageToDP as wp,

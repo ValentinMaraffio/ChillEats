@@ -1,32 +1,43 @@
+"use client"
+
 import "react-native-get-random-values"
 import { useEffect, useState, useRef } from "react"
-import { Dimensions, StyleSheet, View,
-  Text, TextInput, TouchableOpacity, SafeAreaView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, FlatList, Animated,
+import {
+  Dimensions,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  SafeAreaView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  FlatList,
+  Animated,
+  StyleSheet,
 } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
-import * as Location from "expo-location"
+import type * as Location from "expo-location"
 import { FontAwesome, Ionicons } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import type { RootStackParamList } from "../types/navigation"
-import { useAuth } from "../context/authContext"
+import type { RootStackParamList } from "../../types/navigation"
+import { useAuth } from "../../context/authContext"
 import { v4 as uuidv4 } from "uuid"
-import axios from "axios"
+import { styles } from "./mainStyles"
+import {
+  getCurrentLocation,
+  searchPlaces,
+  getPlaceAutocomplete,
+  getPlaceDetails,
+  sortPlacesByDistance,
+  calculateDistance,
+  type Place,
+} from "./mainBackend"
 
-const { width, height } = Dimensions.get("window")
-const GOOGLE_API_KEY = "AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4"
-
-interface Place {
-  name: string
-  rating: number
-  user_ratings_total: number
-  geometry: {
-    location: {
-      lat: number
-      lng: number
-    }
-  }
-}
+const { width } = Dimensions.get("window")
 
 export default function MainScreen() {
   const scrollX = useRef(new Animated.Value(0)).current
@@ -51,47 +62,6 @@ export default function MainScreen() {
   const swipeStartX = useRef(0)
   const [visibleCards, setVisibleCards] = useState<Place[]>([])
   const isFirstSelectionRef = useRef(true)
-
-  // Sort places by distance from user's location
-  const getSortedPlacesByUserLocation = (): Place[] => {
-    if (!places.length || !location) return []
-
-    return [...places].sort((a, b) => {
-      const distA = calculateDistance(
-        location.latitude,
-        location.longitude,
-        a.geometry.location.lat,
-        a.geometry.location.lng,
-      )
-      const distB = calculateDistance(
-        location.latitude,
-        location.longitude,
-        b.geometry.location.lat,
-        b.geometry.location.lng,
-      )
-      return distA - distB
-    })
-  }
-
-  useEffect(() => {
-    ;(async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync()
-      if (status !== "granted") {
-        Alert.alert("Permiso denegado", "Se necesita acceso a la ubicación para usar esta función.")
-        return
-      }
-      const currentLocation = await Location.getCurrentPositionAsync({})
-      setLocation(currentLocation.coords)
-    })()
-
-    const showSubscription = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true))
-    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => setIsKeyboardVisible(false))
-
-    return () => {
-      showSubscription.remove()
-      hideSubscription.remove()
-    }
-  }, [])
 
   // Update visible cards whenever the current index changes
   useEffect(() => {
@@ -118,25 +88,32 @@ export default function MainScreen() {
     setVisibleCards(cards)
   }
 
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const toRad = (value: number) => (value * Math.PI) / 180
-    const R = 6371
-    const dLat = toRad(lat2 - lat1)
-    const dLon = toRad(lon2 - lon1)
-    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
-  }
+  useEffect(() => {
+    ;(async () => {
+      const coords = await getCurrentLocation()
+      setLocation(coords)
+    })()
+
+    const showSubscription = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true))
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => setIsKeyboardVisible(false))
+
+    return () => {
+      showSubscription.remove()
+      hideSubscription.remove()
+    }
+  }, [])
 
   const centerMapOnUser = async () => {
-    const currentLocation = await Location.getCurrentPositionAsync({})
-    setLocation(currentLocation.coords)
-    mapRef.current?.animateToRegion({
-      latitude: currentLocation.coords.latitude,
-      longitude: currentLocation.coords.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    })
+    const currentLocation = await getCurrentLocation()
+    if (currentLocation) {
+      setLocation(currentLocation)
+      mapRef.current?.animateToRegion({
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      })
+    }
   }
 
   const faceNorth = () => {
@@ -257,67 +234,56 @@ export default function MainScreen() {
     setPredictions([])
     isFirstSelectionRef.current = true
 
-    try {
-      const response = await axios.get(`https://maps.googleapis.com/maps/api/place/textsearch/json`, {
-        params: {
-          query: searchText,
-          location: `${location.latitude},${location.longitude}`,
-          radius: 5000,
-          key: GOOGLE_API_KEY,
-        },
-      })
+    const results = await searchPlaces(searchText, location)
 
-      // Clear any previously selected place
-      setSelectedPlace(null)
+    // Clear any previously selected place
+    setSelectedPlace(null)
 
-      // Set the places from search results
-      setPlaces(response.data.results)
+    // Set the places from search results
+    setPlaces(results)
 
-      // Sort places by distance from user and set the list
-      const sortedPlaces = getSortedPlacesByUserLocation()
-      setNearbyPlacesList(sortedPlaces)
+    // Sort places by distance from user and set the list
+    const sortedPlaces = sortPlacesByDistance(results, location)
+    setNearbyPlacesList(sortedPlaces)
 
-      // If we have results, adjust the map to show all markers
-      if (sortedPlaces.length > 0) {
-        // Don't automatically select the first place
-        // Just center the map to show all markers
-        if (location && sortedPlaces.length > 0) {
-          // Find the average position of all places to center the map
-          let sumLat = 0
-          let sumLng = 0
-          let maxDist = 0
+    // If we have results, adjust the map to show all markers
+    if (sortedPlaces.length > 0) {
+      // Don't automatically select the first place
+      // Just center the map to show all markers
+      if (location && sortedPlaces.length > 0) {
+        // Find the average position of all places to center the map
+        let sumLat = 0
+        let sumLng = 0
+        let maxDist = 0
 
-          sortedPlaces.forEach((place) => {
-            sumLat += place.geometry.location.lat
-            sumLng += place.geometry.location.lng
+        sortedPlaces.forEach((place) => {
+          sumLat += place.geometry.location.lat
+          sumLng += place.geometry.location.lng
 
-            // Calculate distance from user to determine zoom level
-            const dist = calculateDistance(
-              location.latitude,
-              location.longitude,
-              place.geometry.location.lat,
-              place.geometry.location.lng,
-            )
+          // Calculate distance from user to determine zoom level
+          const dist = calculateDistance(
+            location.latitude,
+            location.longitude,
+            place.geometry.location.lat,
+            place.geometry.location.lng,
+          )
 
-            if (dist > maxDist) maxDist = dist
-          })
+          if (dist > maxDist) maxDist = dist
+        })
 
-          const avgLat = sumLat / sortedPlaces.length
-          const avgLng = sumLng / sortedPlaces.length
+        const avgLat = sumLat / sortedPlaces.length
+        const avgLng = sumLng / sortedPlaces.length
 
-          // Adjust delta based on the maximum distance
-          const delta = Math.min(0.05, Math.max(0.01, maxDist * 0.05))
+        // Adjust delta based on the maximum distance
+        const delta = Math.min(0.05, Math.max(0.01, maxDist * 0.05))
 
-          mapRef.current?.animateToRegion({
-            latitude: avgLat,
-            longitude: avgLng,
-            latitudeDelta: delta,
-            longitudeDelta: delta,
-          })
-        }
+        mapRef.current?.animateToRegion({
+          latitude: avgLat,
+          longitude: avgLng,
+          latitudeDelta: delta,
+          longitudeDelta: delta,
+        })
       }
-    } catch (error) {
-      Alert.alert("Error", "No se pudieron obtener los resultados de búsqueda")
     }
   }
 
@@ -326,20 +292,11 @@ export default function MainScreen() {
       setPredictions([])
       return
     }
-    const { latitude, longitude } = location || { latitude: 0, longitude: 0 }
-    try {
-      const response = await axios.get(`https://maps.googleapis.com/maps/api/place/autocomplete/json`, {
-        params: {
-          input: query,
-          location: `${latitude},${longitude}`,
-          radius: 5000,
-          key: GOOGLE_API_KEY,
-        },
-      })
-      setPredictions(response.data.predictions)
-    } catch (error) {
-      Alert.alert("Error", "No se pudieron obtener las predicciones")
-    }
+
+    if (!location) return
+
+    const predictions = await getPlaceAutocomplete(query, location)
+    setPredictions(predictions)
   }
 
   const handleSelectPlace = (place: Place) => {
@@ -347,7 +304,7 @@ export default function MainScreen() {
     setSelectedPlace(place)
 
     // Sort places by distance from user's location
-    const sortedPlaces = getSortedPlacesByUserLocation()
+    const sortedPlaces = sortPlacesByDistance(places, location)
     setNearbyPlacesList(sortedPlaces)
     centerMapOnPlace(place)
 
@@ -392,27 +349,9 @@ export default function MainScreen() {
     setPredictions([])
     setHasSelectedPrediction(true)
 
-    try {
-      const detailResponse = await axios.get(`https://maps.googleapis.com/maps/api/place/details/json`, {
-        params: {
-          place_id: prediction.place_id,
-          key: GOOGLE_API_KEY,
-        },
-      })
+    const place = await getPlaceDetails(prediction.place_id)
 
-      const result = detailResponse.data.result
-      const place: Place = {
-        name: result.name,
-        rating: result.rating || 0,
-        user_ratings_total: result.user_ratings_total || 0,
-        geometry: {
-          location: {
-            lat: result.geometry.location.lat,
-            lng: result.geometry.location.lng,
-          },
-        },
-      }
-
+    if (place) {
       setPlaces([place])
       handleSelectPlace(place)
 
@@ -422,8 +361,6 @@ export default function MainScreen() {
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       })
-    } catch (error) {
-      Alert.alert("Error", "No se pudo obtener la información del lugar")
     }
   }
 
@@ -448,7 +385,7 @@ export default function MainScreen() {
             <MapView
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               showsUserLocation={true}
               showsMyLocationButton={false}
               showsCompass={false}
@@ -659,201 +596,3 @@ export default function MainScreen() {
     </SafeAreaView>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#ff9500",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  searchContainer: {
-    position: "absolute",
-    top: height * 0.07,
-    width: "100%",
-    alignItems: "center",
-  },
-  searchBar: {
-    backgroundColor: "white",
-    borderRadius: width * 0.03,
-    flexDirection: "row",
-    alignItems: "center",
-    width: width * 0.9,
-    height: height * 0.05,
-    marginBottom: height * 0.01,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: width * 0.02,
-    color: "#000",
-  },
-  filters: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    width: "100%",
-    paddingHorizontal: width * 0.025,
-  },
-  filterButton: {
-    backgroundColor: "white",
-    borderRadius: width * 0.03,
-    paddingHorizontal: width * 0.03,
-    paddingVertical: height * 0.008,
-    marginHorizontal: width * 0.01,
-  },
-  filterText: {
-    fontSize: width * 0.032,
-    color: "#000",
-  },
-  shadowOverlay: {
-    position: "absolute",
-    bottom: height * 0.074,
-    width: "100%",
-    height: height * 0.004,
-    backgroundColor: "#000",
-    opacity: 0.5,
-    zIndex: 9,
-  },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    height: height * 0.075,
-    width: "100%",
-    backgroundColor: "#ff9500",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    borderTopWidth: 0.5,
-    borderColor: "#eee",
-    zIndex: 10,
-  },
-  predictionList: {
-    backgroundColor: "white",
-    width: width * 0.9,
-    maxHeight: height * 0.25,
-    borderRadius: width * 0.02,
-    marginTop: height * 0.01,
-    marginBottom: height * 0.01,
-    position: "absolute",
-    top: height * 0.12,
-    zIndex: 999,
-    elevation: 5,
-  },
-  predictionItem: {
-    padding: height * 0.013,
-  },
-  predictionText: {
-    fontSize: width * 0.042,
-    color: "#000",
-  },
-  floatingButtons: {
-    position: "absolute",
-    bottom: height * 0.1,
-    right: width * 0.05,
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: height * 0.015,
-  },
-  floatButton: {
-    backgroundColor: "#ff9500",
-    padding: height * 0.012,
-    borderRadius: 50,
-    elevation: 3,
-  },
-  placeCard: {
-    position: "absolute",
-    height: height * 0.15,
-    bottom: height * 0.115,
-    left: width * 0.1,
-    right: width * 0.1,
-    backgroundColor: "white",
-    borderRadius: width * 0.04,
-    padding: width * 0.04,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    zIndex: 10,
-  },
-  placeName: {
-    fontSize: width * 0.045,
-    fontWeight: "bold",
-    marginTop: height * -0.006,
-    marginBottom: height * 0.004,
-  },
-  placeRating: {
-    fontSize: width * 0.035,
-    color: "#333",
-    marginBottom: height * 0.001,
-  },
-  placeDistance: {
-    fontSize: width * 0.035,
-    color: "#333",
-    marginBottom: height * 0.01,
-  },
-  carouselContainer: {
-    position: "absolute",
-    bottom: height * 0.115,
-    height: height * 0.18,
-    width: "100%",
-    alignItems: "center", // Add this to center the FlatList
-  },
-  carouselCard: {
-    width: width * 0.75,
-    backgroundColor: "white",
-    marginHorizontal: 8,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    justifyContent: "center",
-  },
-  carouselCardSelected: {
-    borderColor: "#ff9500",
-    borderWidth: 2,
-  },
-  carouselCardNotSelected: {
-    borderWidth: 0,
-    transform: [{ scale: 1 }],
-  },
-  badges: {
-    flexDirection: "row",
-    marginTop: 8,
-    gap: 8,
-  },
-  carouselNavigation: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    position: "absolute",
-    top: height * 0.07,
-    left: width * 0.05,
-    right: width * 0.05,
-    zIndex: 10,
-  },
-  carouselNavButton: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },
-  badge: {
-    backgroundColor: "#eee",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    fontSize: 12,
-  },
-})

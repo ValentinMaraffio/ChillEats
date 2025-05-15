@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
   StyleSheet,
@@ -7,83 +6,64 @@ import {
   View,
   Image,
   TextInput,
+  Pressable,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import type { RootStackParamList } from "../types/navigation"
 import { useNavigation } from '@react-navigation/native';
+import { RootStackParamList } from '../../types/navigation';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  widthPercentageToDP as wp,
-  heightPercentageToDP as hp,
-} from 'react-native-responsive-screen';
+import { useState } from 'react';
+import axios from 'axios';
+import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
+import { useAuth } from '../../context/authContext';
 
-const icon = require('../assets/img/icon-1.png');
-const googleLogo = require('../assets/img/googleLogo.png');
-const appleLogo = require('../assets/img/appleLogo.png');
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ...imports no modificados
+function parseJwt(token: string) {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return {};
+  }
+}
 
-export default function RegisterScreen() {
+
+const icon = require('../../assets/img/icon-1.png');
+const googleLogo = require('../../assets/img/googleLogo.png');
+const appleLogo = require('../../assets/img/appleLogo.png');
+
+export default function LoginScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const { login } = useAuth();
 
-  const handleRegister = async () => {
-    if (!email || !password || !confirmPassword || !username) {
-      alert('Por favor completa todos los campos');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      alert('Las contraseñas no coinciden');
-      return;
-    }
-
-    try {
-      const response = await fetch('http://172.16.1.95:8000/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          email,
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert('Registro exitoso. Un código de verificación ha sido enviado a tu correo.');
-
-        // Enviar código de verificación
-        await fetch('http://172.16.1.95:8000/api/auth/send-verification-code', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
-        });
-
-        // Redirigir a la pantalla de verificación
-        navigation.navigate('Verification', { email });
-      } else {
-        alert(data.message || 'Error en el registro');
-      }
-    } catch (error) {
-      console.error('Error al registrar:', error);
-      alert('No se pudo conectar con el servidor');
-    }
-  };
+  const handleLogin = async () => {
+  try {
+    const res = await axios.post('http://172.16.1.95:8000/api/auth/signin', { email, password });
+    const token = res.data.token;
+    await login(token);
+    navigation.navigate('Profile', {
+      username: parseJwt(token).username,
+      email: parseJwt(token).email,
+    });
+  } catch (error: any) {
+    Alert.alert('Error', error.response?.data?.message || 'Ocurrió un error');
+  }
+};
 
   return (
     <KeyboardAvoidingView
@@ -95,20 +75,13 @@ export default function RegisterScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.container}>
+          <View style={styles.content}>
             <Image
               source={icon}
-              style={{ width: wp('40%'), height: wp('40%'), marginTop: hp('6%') }}
+              style={{ width: wp('50%'), height: wp('50%'), marginTop: hp('10%') }}
               resizeMode="contain"
             />
 
-            <TextInput
-              style={styles.TextInput}
-              placeholder="Nombre de Usuario"
-              placeholderTextColor="white"
-              value={username}
-              onChangeText={setUsername}
-            />
             <TextInput
               style={styles.TextInput}
               placeholder="Email"
@@ -116,7 +89,9 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              autoCapitalize="none"
             />
+
             <TextInput
               style={styles.TextInput}
               placeholder="Contraseña"
@@ -125,34 +100,21 @@ export default function RegisterScreen() {
               value={password}
               onChangeText={setPassword}
             />
-            <TextInput
-              style={styles.TextInput}
-              placeholder="Repetir Contraseña"
-              placeholderTextColor="white"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-            />
 
             <TouchableOpacity
-              style={styles.signInButton}
-              onPress={handleRegister}
+              style={styles.loginButton}
+              onPress={handleLogin}
             >
-              <Text style={styles.buttonText}>Registrar</Text>
+              <Text style={styles.buttonText}>Iniciar Sesión</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.login}
-              onPress={() => navigation.navigate('Login')}
-            >
-              <Text style={styles.buttonTextLogin}>Volver a Inicio de Sesion</Text>
-            </TouchableOpacity>
+            <Pressable onPress={() => alert('Texto como botón')}>
+              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+            </Pressable>
 
-            <View style={styles.dividerContainer}>
-              <View style={styles.line} />
-              <Text style={styles.dividerText}>or</Text>
-              <View style={styles.line} />
-            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerText}>¿No tienes cuenta? Registrate</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.continueButton}
@@ -169,10 +131,6 @@ export default function RegisterScreen() {
               <Image source={appleLogo} style={{ width: wp('7%'), height: wp('7%') }} />
               <Text style={styles.buttonText}>Continuar con Apple</Text>
             </TouchableOpacity>
-
-            <Text style={styles.TermsText}>
-              Presionando continuar acepta los Términos y Condiciones y la Política de Privacidad.
-            </Text>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -197,17 +155,17 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ff9500',
-    alignItems: 'center',
-    paddingBottom: hp('4%'),
-    width: '100%',
-  },
   scrollContent: {
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingBottom: hp('15%'),
     backgroundColor: '#ff9500',
+    width: '100%',
+  },
+  content: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: '100%',
   },
   TextInput: {
     borderBottomWidth: 1,
@@ -217,16 +175,12 @@ const styles = StyleSheet.create({
     color: 'white',
     paddingVertical: hp('0.5%'),
   },
-  signInButton: {
+  loginButton: {
     backgroundColor: 'white',
     paddingVertical: hp('2%'),
     borderRadius: wp('8%'),
     marginTop: hp('2.5%'),
     width: wp('50%'),
-    display: 'flex',
-  },
-  login: {
-    marginTop: hp('1.2%'),
   },
   buttonText: {
     color: 'black',
@@ -234,33 +188,17 @@ const styles = StyleSheet.create({
     fontSize: wp('4%'),
     textAlign: 'center',
   },
-  buttonTextLogin: {
+  forgotText: {
     color: 'white',
-    fontWeight: '400',
+    margin: hp('2%'),
     fontSize: wp('3.5%'),
-    textAlign: 'center',
     textDecorationLine: 'underline',
   },
-  verificationContainer: {
-    marginTop: hp('2%'),
-    alignItems: 'center',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: hp('2%'),
-    width: wp('80%'),
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#fff',
-    opacity: 0.6,
-  },
-  dividerText: {
-    marginHorizontal: wp('2.5%'),
-    color: '#fff',
-    fontWeight: 'bold',
+  registerText: {
+    color: 'white',
+    fontSize: wp('3.5%'),
+    textDecorationLine: 'underline',
+    marginBottom: hp('2%'),
   },
   continueButton: {
     flexDirection: 'row',
@@ -272,14 +210,6 @@ const styles = StyleSheet.create({
     marginTop: hp('1.5%'),
     width: wp('90%'),
     gap: wp('2%'),
-  },
-  TermsText: {
-    color: 'white',
-    textAlign: 'center',
-    width: wp('80%'),
-    marginTop: hp('2.5%'),
-    fontSize: wp('3.2%'),
-    lineHeight: hp('2.8%'),
   },
   bottomNav: {
     position: 'absolute',
