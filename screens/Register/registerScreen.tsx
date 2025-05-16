@@ -13,12 +13,7 @@ import {
   TouchableWithoutFeedback,
   Alert,
 } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import {
-  widthPercentageToDP as wp,
-} from 'react-native-responsive-screen';
-
 import { 
   RegisterNavigationProp, 
   icon, 
@@ -28,14 +23,15 @@ import {
   registerUser
 } from './registerBackend';
 import { styles } from './registerStyles';
+import BottomNavBar from "../../components/bottomNavBar"
 
 export default function RegisterScreen() {
   const navigation = useNavigation<RegisterNavigationProp>();
-
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   const handleRegister = async () => {
     // Validate form
@@ -148,19 +144,7 @@ export default function RegisterScreen() {
         </ScrollView>
       </TouchableWithoutFeedback>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-          <FontAwesome name="home" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
-          <FontAwesome name="heart" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-
-        <TouchableOpacity>
-          <FontAwesome name="user" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-      </View>
+      {!isKeyboardVisible && <BottomNavBar />}
 
       <StatusBar style="light" />
     </KeyboardAvoidingView>

@@ -12,11 +12,10 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
-import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { useAuth } from '../../context/authContext';
+import BottomNavBar from "../../components/bottomNavBar"
 
 import { 
   icon, 
@@ -33,7 +32,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login } = useAuth();
-
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  
   // Modified to handle the login directly in this component
   const handleLogin = async () => {
     try {
@@ -126,19 +126,7 @@ export default function LoginScreen() {
         </ScrollView>
       </TouchableWithoutFeedback>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-          <FontAwesome name="home" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
-          <FontAwesome name="heart" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-
-        <TouchableOpacity>
-          <FontAwesome name="user" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-      </View>
+      {!isKeyboardVisible && <BottomNavBar />}
 
       <StatusBar style="light" />
     </KeyboardAvoidingView>

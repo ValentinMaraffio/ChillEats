@@ -12,6 +12,7 @@ import { useFavorites } from "../../context/favoritesContext"
 import { calculateDistance } from "../Main/mainBackend"
 import * as Location from "expo-location"
 import { useEffect, useState } from "react"
+import BottomNavBar from "../../components/bottomNavBar"
 
 const Tag = ({ label }: { label: string }) => (
   <View style={tagStyle.container}>
@@ -24,6 +25,7 @@ export default function FavoritesScreen() {
   const { user } = useAuth()
   const { favorites, removeFavorite } = useFavorites()
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null)
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   // Obtener la ubicación del usuario al cargar la pantalla
   useEffect(() => {
@@ -162,30 +164,8 @@ export default function FavoritesScreen() {
           ))}
         </ScrollView>
 
-        <View style={styles.bottomNav}>
-          <TouchableOpacity onPress={() => navigation.navigate("Main")}>
-            <FontAwesome name="home" size={wp("7%")} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity>
-            <FontAwesome name="heart" size={wp("7%")} color="white" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              if (user) {
-                navigation.navigate("Profile", {
-                  username: user.username,
-                  email: user.email,
-                })
-              } else {
-                navigation.navigate("Login")
-              }
-            }}
-          >
-            <FontAwesome name="user" size={wp("7%")} color="white" />
-          </TouchableOpacity>
-        </View>
+        {!isKeyboardVisible && <BottomNavBar />}
+      
       </ImageBackground>
       <StatusBar style="light" />
     </SafeAreaView>

@@ -5,10 +5,13 @@ import { widthPercentageToDP as wp } from 'react-native-responsive-screen';
 import { useAuth } from '../../context/authContext';
 import { ProfileProps, handleUserLogout } from './profileBackend';
 import { styles } from './profileStyles';
+import { useState } from 'react';
+import BottomNavBar from "../../components/bottomNavBar"
 
 export default function ProfileScreen({ route, navigation }: ProfileProps) {
   const { username, email } = route.params;
   const { logout } = useAuth();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
 
   const handleLogout = () => {
     handleUserLogout(logout, navigation);
@@ -27,17 +30,7 @@ export default function ProfileScreen({ route, navigation }: ProfileProps) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-          <FontAwesome name="home" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Favorites')}>
-          <FontAwesome name="heart" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity>
-          <FontAwesome name="user" size={wp('7%')} color="white" />
-        </TouchableOpacity>
-      </View>
+      {!isKeyboardVisible && <BottomNavBar />}
     </View>
   );
 }

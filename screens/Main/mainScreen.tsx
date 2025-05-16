@@ -23,9 +23,6 @@ import {
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
 import type * as Location from "expo-location"
 import { FontAwesome, Ionicons } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
-import type { RootStackParamList } from "../../types/navigation"
 import { useAuth } from "../../context/authContext"
 import { v4 as uuidv4 } from "uuid"
 import { styles } from "./mainStyles"
@@ -39,6 +36,7 @@ import {
   type Place,
 } from "./mainBackend"
 import { useFavorites } from "../../context/favoritesContext"
+import BottomNavBar from "../../components/bottomNavBar"
 
 const { width, height } = Dimensions.get("window")
 
@@ -46,7 +44,6 @@ export default function MainScreen() {
   const scrollX = useRef(new Animated.Value(0)).current
   const flatListRef = useRef<FlatList>(null)
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { user } = useAuth()
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites()
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null)
@@ -67,14 +64,13 @@ export default function MainScreen() {
   const [visibleCards, setVisibleCards] = useState<Place[]>([])
   const isFirstSelectionRef = useRef(true)
 
-  // Bottom sheet related states and refs
   const [showBottomSheet, setShowBottomSheet] = useState(false)
   const bottomSheetPosition = useRef(new Animated.Value(height)).current
   const currentPositionRef = useRef(height)
-  const bottomSheetHeight = height * 0.6 // 60% of screen height
+  const bottomSheetHeight = height * 0.6 
   const snapPoints = {
-    top: height * 0.2, // 20% from top (expanded)
-    bottom: height, // Fully hidden
+    top: height * 0.2, 
+    bottom: height, 
   }
 
   // Set up a listener for the animated value
@@ -748,30 +744,8 @@ export default function MainScreen() {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-      {!isKeyboardVisible && (
-        <View style={styles.bottomNav}>
-          <TouchableOpacity onPress={() => navigation.navigate("Main")}>
-            <FontAwesome name="home" size={28} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("Favorites")}>
-            <FontAwesome name="heart" size={28} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              if (user) {
-                navigation.navigate("Profile", {
-                  username: user.username,
-                  email: user.email,
-                })
-              } else {
-                navigation.navigate("Login")
-              }
-            }}
-          >
-            <FontAwesome name="user" size={28} color="white" />
-          </TouchableOpacity>
-        </View>
-      )}
+     {!isKeyboardVisible && <BottomNavBar />}
+
     </SafeAreaView>
   )
 }
