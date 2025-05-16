@@ -17,6 +17,8 @@ import {
   FlatList,
   Animated,
   StyleSheet,
+  PanResponder,
+  Alert,
 } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
 import type * as Location from "expo-location"
@@ -36,8 +38,9 @@ import {
   calculateDistance,
   type Place,
 } from "./mainBackend"
+import { useFavorites } from "../../context/favoritesContext"
 
-const { width } = Dimensions.get("window")
+const { width, height } = Dimensions.get("window")
 
 export default function MainScreen() {
   const scrollX = useRef(new Animated.Value(0)).current
@@ -45,6 +48,7 @@ export default function MainScreen() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
   const { user } = useAuth()
+  const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites()
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null)
   const [places, setPlaces] = useState<Place[]>([])
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
@@ -62,6 +66,90 @@ export default function MainScreen() {
   const swipeStartX = useRef(0)
   const [visibleCards, setVisibleCards] = useState<Place[]>([])
   const isFirstSelectionRef = useRef(true)
+
+  // Bottom sheet related states and refs
+  const [showBottomSheet, setShowBottomSheet] = useState(false)
+  const bottomSheetPosition = useRef(new Animated.Value(height)).current
+  const currentPositionRef = useRef(height)
+  const bottomSheetHeight = height * 0.6 // 60% of screen height
+  const snapPoints = {
+    top: height * 0.2, // 20% from top (expanded)
+    bottom: height, // Fully hidden
+  }
+
+  // Set up a listener for the animated value
+  useEffect(() => {
+    const id = bottomSheetPosition.addListener(({ value }) => {
+      currentPositionRef.current = value
+    })
+
+    return () => {
+      bottomSheetPosition.removeListener(id)
+    }
+  }, [])
+
+  // Pan responder for the bottom sheet
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow dragging down from the expanded position or up from the collapsed position
+        const newPosition = snapPoints.top + gestureState.dy
+        if (newPosition >= snapPoints.top && newPosition <= snapPoints.bottom) {
+          bottomSheetPosition.setValue(newPosition)
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // Determine whether to snap to top or bottom
+        if (gestureState.vy > 0.5 || (gestureState.dy > 50 && gestureState.vy > 0)) {
+          // Swipe down - close the sheet
+          closeBottomSheet()
+        } else if (gestureState.vy < -0.5 || (gestureState.dy < -50 && gestureState.vy < 0)) {
+          // Swipe up - expand the sheet
+          expandBottomSheet()
+        } else {
+          // Based on current position
+          const currentPosition = currentPositionRef.current
+          if (currentPosition > snapPoints.top + (snapPoints.bottom - snapPoints.top) / 2) {
+            closeBottomSheet()
+          } else {
+            expandBottomSheet()
+          }
+        }
+      },
+    }),
+  ).current
+
+  // Function to show and expand the bottom sheet
+  const showAndExpandBottomSheet = () => {
+    setShowBottomSheet(true)
+    Animated.spring(bottomSheetPosition, {
+      toValue: snapPoints.top,
+      useNativeDriver: true,
+      bounciness: 4,
+    }).start()
+  }
+
+  // Function to expand the bottom sheet
+  const expandBottomSheet = () => {
+    Animated.spring(bottomSheetPosition, {
+      toValue: snapPoints.top,
+      useNativeDriver: true,
+      bounciness: 4,
+    }).start()
+  }
+
+  // Function to close the bottom sheet
+  const closeBottomSheet = () => {
+    Animated.timing(bottomSheetPosition, {
+      toValue: snapPoints.bottom,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowBottomSheet(false)
+    })
+  }
 
   // Update visible cards whenever the current index changes
   useEffect(() => {
@@ -141,6 +229,7 @@ export default function MainScreen() {
     setNearbyPlacesList([])
     setVisibleCards([])
     setPredictions([]) // Clear predictions when resetting the map
+    setShowBottomSheet(false) // Close bottom sheet when resetting
 
     // Center map on user's location
     if (location) {
@@ -239,6 +328,11 @@ export default function MainScreen() {
     // Clear any previously selected place
     setSelectedPlace(null)
 
+    // Close bottom sheet if open
+    if (showBottomSheet) {
+      closeBottomSheet()
+    }
+
     // Set the places from search results
     setPlaces(results)
 
@@ -303,6 +397,11 @@ export default function MainScreen() {
     markerPressRef.current = true
     setSelectedPlace(place)
 
+    // Close bottom sheet if open
+    if (showBottomSheet) {
+      closeBottomSheet()
+    }
+
     // Sort places by distance from user's location
     const sortedPlaces = sortPlacesByDistance(places, location)
     setNearbyPlacesList(sortedPlaces)
@@ -364,6 +463,24 @@ export default function MainScreen() {
     }
   }
 
+  // Handle tap on the selected card (middle card)
+  const handleSelectedCardPress = () => {
+    if (selectedPlace) {
+      showAndExpandBottomSheet()
+    }
+  }
+
+  // Toggle favorite status for a place
+  const toggleFavorite = (place: Place) => {
+    if (isFavorite(place)) {
+      removeFavorite(place)
+      Alert.alert("Eliminado", "El lugar ha sido eliminado de tus favoritos")
+    } else {
+      addFavorite(place)
+      Alert.alert("Agregado", "El lugar ha sido agregado a tus favoritos")
+    }
+  }
+
   if (!location) {
     return (
       <View style={styles.loadingContainer}>
@@ -401,6 +518,9 @@ export default function MainScreen() {
                   markerPressRef.current = false
                 } else {
                   setSelectedPlace(null)
+                  if (showBottomSheet) {
+                    closeBottomSheet()
+                  }
                 }
               }}
             >
@@ -474,7 +594,7 @@ export default function MainScreen() {
               </View>
             </View>
 
-            {selectedPlace && !isKeyboardVisible && (
+            {selectedPlace && !isKeyboardVisible && !showBottomSheet && (
               <View style={styles.carouselContainer}>
                 {visibleCards.length > 0 && (
                   <FlatList
@@ -501,6 +621,9 @@ export default function MainScreen() {
                             } else if (index === 2) {
                               // Right card - navigate to next
                               navigateToPlace("next")
+                            } else if (isSelected) {
+                              // Middle card - show bottom sheet
+                              handleSelectedCardPress()
                             }
                           }}
                           style={[
@@ -564,6 +687,62 @@ export default function MainScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+            )}
+
+            {/* Bottom Sheet */}
+            {showBottomSheet && (
+              <Animated.View
+                style={[
+                  styles.bottomSheet,
+                  {
+                    transform: [{ translateY: bottomSheetPosition }],
+                    height: bottomSheetHeight,
+                  },
+                ]}
+                {...panResponder.panHandlers}
+              >
+                <View style={styles.bottomSheetHandle} />
+                <View style={styles.bottomSheetContent}>
+                  {selectedPlace && (
+                    <>
+                      <View style={styles.bottomSheetHeader}>
+                        <Text style={styles.bottomSheetTitle}>{selectedPlace.name}</Text>
+                        <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(selectedPlace)}>
+                          <FontAwesome
+                            name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
+                            size={24}
+                            color="#ff9500"
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      <Text style={styles.bottomSheetRating}>
+                        ⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)
+                      </Text>
+                      {location && (
+                        <Text style={styles.bottomSheetDistance}>
+                          🚶{" "}
+                          {calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            selectedPlace.geometry.location.lat,
+                            selectedPlace.geometry.location.lng,
+                          ).toFixed(1)}{" "}
+                          km
+                        </Text>
+                      )}
+                      <View style={styles.bottomSheetBadges}>
+                        <Text style={styles.badge}>Celiaco</Text>
+                        <Text style={styles.badge}>Vegetariano</Text>
+                      </View>
+
+                      {/* Additional content can be added here */}
+                      <Text style={styles.bottomSheetDescription}>
+                        Desliza hacia arriba para ver más información o hacia abajo para cerrar.
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </Animated.View>
             )}
           </View>
         </TouchableWithoutFeedback>

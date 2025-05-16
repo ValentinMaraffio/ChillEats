@@ -7,6 +7,7 @@ export const GOOGLE_API_KEY = "AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4"
 
 // Interfaces
 export interface Place {
+  place_id?: string
   name: string
   rating: number
   user_ratings_total: number
@@ -90,6 +91,7 @@ export const getPlaceDetails = async (placeId: string): Promise<Place | null> =>
 
     const result = detailResponse.data.result
     return {
+      place_id: placeId,
       name: result.name,
       rating: result.rating || 0,
       user_ratings_total: result.user_ratings_total || 0,

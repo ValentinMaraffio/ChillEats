@@ -11,6 +11,7 @@ import VerificationScreen from './screens/Verification/verificationScreen';
 import ProfileScreen from './screens/Profile/profileScreen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './context/authContext';
+import { FavoritesProvider } from "./context/favoritesContext"
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -20,14 +21,16 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <AuthProvider>
-          <Stack.Navigator initialRouteName="Main" screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="Main" component={MainScreen} />
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="Favorites" component={FavoritesScreen} />
-            <Stack.Screen name="Verification" component={VerificationScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-          </Stack.Navigator>
+        <FavoritesProvider>
+            <Stack.Navigator initialRouteName="Main" screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="Main" component={MainScreen} />
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Register" component={RegisterScreen} />
+              <Stack.Screen name="Favorites" component={FavoritesScreen} />
+              <Stack.Screen name="Verification" component={VerificationScreen} />
+              <Stack.Screen name="Profile" component={ProfileScreen} />
+            </Stack.Navigator>
+          </FavoritesProvider>
         </AuthProvider>
       </NavigationContainer>
     </GestureHandlerRootView>

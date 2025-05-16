@@ -207,4 +207,67 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 12,
   },
+  // Bottom sheet styles
+  bottomSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "white",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+    elevation: 6,
+    zIndex: 20,
+  },
+  bottomSheetHandle: {
+    width: 40,
+    height: 5,
+    backgroundColor: "#ccc",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginTop: 10,
+  },
+  bottomSheetContent: {
+    padding: 20,
+    flex: 1,
+  },
+  bottomSheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  bottomSheetTitle: {
+    fontSize: width * 0.06,
+    fontWeight: "bold",
+    flex: 1,
+  },
+  favoriteButton: {
+    padding: 8,
+  },
+  bottomSheetRating: {
+    fontSize: width * 0.04,
+    color: "#333",
+    marginBottom: 5,
+  },
+  bottomSheetDistance: {
+    fontSize: width * 0.04,
+    color: "#333",
+    marginBottom: 15,
+  },
+  bottomSheetBadges: {
+    flexDirection: "row",
+    marginBottom: 20,
+    gap: 10,
+  },
+  bottomSheetDescription: {
+    fontSize: width * 0.04,
+    color: "#666",
+    marginTop: 20,
+    textAlign: "center",
+  },
 })

@@ -16,6 +16,8 @@ import {
   resendVerificationCode
 } from './verificationBackend';
 import { styles } from './verificationStyles';
+import { parseJwt } from '../Login/loginBackend'; // o el path correcto
+import { useAuth } from '../../context/authContext';
 
 export default function VerificationScreen() {
   const navigation = useNavigation<VerificationNavigationProp>();
@@ -35,14 +37,23 @@ export default function VerificationScreen() {
     return () => clearInterval(interval);
   }, [resendCooldown]);
 
-  const handleVerify = async () => {
-    const result = await verifyCode(email, code);
-    Alert.alert(result.success ? 'Éxito' : 'Error', result.message);
-    
-    if (result.success) {
-      navigation.navigate('Login');
-    }
-  };
+  const { login } = useAuth();
+
+const handleVerify = async () => {
+  const result = await verifyCode(email, code);
+  Alert.alert(result.success ? 'Éxito' : 'Error', result.message);
+
+  if (result.success && result.token) {
+    await login(result.token);
+    const userData = parseJwt(result.token);
+
+    navigation.navigate('Profile', {
+      username: userData.username,
+      email: userData.email,
+    });
+  }
+};
+
 
   const handleResendCode = async () => {
     if (resendCooldown > 0) return;

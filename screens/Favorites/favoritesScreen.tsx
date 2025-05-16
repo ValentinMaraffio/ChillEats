@@ -1,60 +1,127 @@
-import { StatusBar } from 'expo-status-bar';
-import {
-  Text,
-  View,
-  FlatList,
-  ImageBackground,
-  SafeAreaView,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
-import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import {
-  widthPercentageToDP as wp,
-} from 'react-native-responsive-screen';
-import { useAuth } from '../../context/authContext';
-import { data, data1, data2, data3, NavigationProp } from './favoritesBackend';
-import { styles, tagStyle } from './favoritesStyles';
+"use client"
+
+import { StatusBar } from "expo-status-bar"
+import { Text, View, ImageBackground, SafeAreaView, TouchableOpacity, ScrollView, Alert } from "react-native"
+import { FontAwesome } from "@expo/vector-icons"
+import { useNavigation } from "@react-navigation/native"
+import { widthPercentageToDP as wp } from "react-native-responsive-screen"
+import { useAuth } from "../../context/authContext"
+import type { NavigationProp } from "./favoritesBackend"
+import { styles, tagStyle } from "./favoritesStyles"
+import { useFavorites } from "../../context/favoritesContext"
+import { calculateDistance } from "../Main/mainBackend"
+import * as Location from "expo-location"
+import { useEffect, useState } from "react"
 
 const Tag = ({ label }: { label: string }) => (
   <View style={tagStyle.container}>
     <Text style={tagStyle.text}>{label}</Text>
   </View>
-);
+)
 
-export default function RestaurantsScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuth();
+export default function FavoritesScreen() {
+  const navigation = useNavigation<NavigationProp>()
+  const { user } = useAuth()
+  const { favorites, removeFavorite } = useFavorites()
+  const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null)
 
-  const renderRestaurant = ({ item }: any) => (
-    <View style={styles.card}>
-      <View style={styles.cardContent}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{item.name}</Text>
-          <Text style={styles.subtext}>⭐ {item.rating} ({item.reviews} reseñas)</Text>
-          <Text style={styles.subtext}>🚶 {item.distance}</Text>
-          <View style={styles.tagsRow}>
-            <Tag label="Celíaco" />
-            <Tag label="Vegetariano" />
-            <Tag label="Vegano" />
+  // Obtener la ubicación del usuario al cargar la pantalla
+  useEffect(() => {
+    const getLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync()
+        if (status === "granted") {
+          const location = await Location.getCurrentPositionAsync({})
+          setUserLocation(location.coords)
+        }
+      } catch (error) {
+        console.error("Error al obtener la ubicación:", error)
+      }
+    }
+
+    getLocation()
+  }, [])
+
+  // Manejar la eliminación de un favorito
+  const handleRemoveFavorite = (place: any) => {
+    Alert.alert("Eliminar favorito", "¿Estás seguro de que quieres eliminar este lugar de tus favoritos?", [
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+      {
+        text: "Eliminar",
+        onPress: () => {
+          removeFavorite(place)
+        },
+        style: "destructive",
+      },
+    ])
+  }
+
+  // Si no hay favoritos, mostrar un mensaje
+  if (favorites.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ImageBackground
+          source={require("../../assets/img/fast-food-bg.jpg")}
+          style={styles.background}
+          resizeMode="repeat"
+          imageStyle={{ opacity: 0.3 }}
+        >
+          <View style={styles.filters}>
+            {["Localidad", "Limitación", "Precio", "Local"].map((filter, index) => (
+              <TouchableOpacity key={index} style={styles.filterButton}>
+                <Text style={styles.filterText}>{filter}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        </View>
-        <FontAwesome5 name={item.icon as any} size={36} color="black" style={styles.cardIcon} />
-      </View>
-    </View>
-  );
+
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No tienes lugares favoritos</Text>
+            <Text style={styles.emptySubtext}>Agrega lugares a tus favoritos desde el mapa para verlos aquí</Text>
+          </View>
+
+          <View style={styles.bottomNav}>
+            <TouchableOpacity onPress={() => navigation.navigate("Main")}>
+              <FontAwesome name="home" size={wp("7%")} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity>
+              <FontAwesome name="heart" size={wp("7%")} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (user) {
+                  navigation.navigate("Profile", {
+                    username: user.username,
+                    email: user.email,
+                  })
+                } else {
+                  navigation.navigate("Login")
+                }
+              }}
+            >
+              <FontAwesome name="user" size={wp("7%")} color="white" />
+            </TouchableOpacity>
+          </View>
+        </ImageBackground>
+        <StatusBar style="light" />
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ImageBackground
-        source={require('../../assets/img/fast-food-bg.jpg')}
+        source={require("../../assets/img/fast-food-bg.jpg")}
         style={styles.background}
         resizeMode="repeat"
         imageStyle={{ opacity: 0.3 }}
       >
         <View style={styles.filters}>
-          {['Localidad', 'Limitación', 'Precio', 'Local'].map((filter, index) => (
+          {["Localidad", "Limitación", "Precio", "Local"].map((filter, index) => (
             <TouchableOpacity key={index} style={styles.filterButton}>
               <Text style={styles.filterText}>{filter}</Text>
             </TouchableOpacity>
@@ -62,38 +129,65 @@ export default function RestaurantsScreen() {
         </View>
 
         <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          <FlatList data={data} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
-          <FlatList data={data1} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
-          <FlatList data={data2} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
-          <FlatList data={data3} keyExtractor={(item) => item.id} scrollEnabled={false} renderItem={renderRestaurant} />
+          {favorites.map((place, index) => (
+            <View key={index} style={styles.card}>
+              <View style={styles.cardContent}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.title}>{place.name}</Text>
+                  <Text style={styles.subtext}>
+                    ⭐ {place.rating} ({place.user_ratings_total} reseñas)
+                  </Text>
+                  {userLocation && (
+                    <Text style={styles.subtext}>
+                      🚶{" "}
+                      {calculateDistance(
+                        userLocation.latitude,
+                        userLocation.longitude,
+                        place.geometry.location.lat,
+                        place.geometry.location.lng,
+                      ).toFixed(1)}{" "}
+                      km
+                    </Text>
+                  )}
+                  <View style={styles.tagsRow}>
+                    <Tag label="Celíaco" />
+                    <Tag label="Vegetariano" />
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => handleRemoveFavorite(place)} style={styles.favoriteButton}>
+                  <FontAwesome name="heart" size={24} color="#ff9500" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
         </ScrollView>
 
         <View style={styles.bottomNav}>
-          <TouchableOpacity onPress={() => navigation.navigate('Main')}>
-            <FontAwesome name="home" size={wp('7%')} color="white" />
+          <TouchableOpacity onPress={() => navigation.navigate("Main")}>
+            <FontAwesome name="home" size={wp("7%")} color="white" />
           </TouchableOpacity>
 
           <TouchableOpacity>
-            <FontAwesome name="heart" size={wp('7%')} color="white" />
+            <FontAwesome name="heart" size={wp("7%")} color="white" />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => {
               if (user) {
-                navigation.navigate('Profile', {
+                navigation.navigate("Profile", {
                   username: user.username,
                   email: user.email,
-                });
+                })
               } else {
-                navigation.navigate('Login');
+                navigation.navigate("Login")
               }
             }}
           >
-            <FontAwesome name="user" size={wp('7%')} color="white" />
+            <FontAwesome name="user" size={wp("7%")} color="white" />
           </TouchableOpacity>
         </View>
       </ImageBackground>
       <StatusBar style="light" />
     </SafeAreaView>
-  );
+  )
 }

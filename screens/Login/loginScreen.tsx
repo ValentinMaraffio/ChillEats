@@ -39,16 +39,20 @@ export default function LoginScreen() {
     try {
       const res = await axios.post('http://172.16.1.95:8000/api/auth/signin', { email, password });
       const token = res.data.token;
-      
-      // Wrap the login call in a Promise if it doesn't return one
+  
       await Promise.resolve(login(token));
-      
+  
       navigation.navigate('Profile', {
         username: parseJwt(token).username,
         email: parseJwt(token).email,
       });
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Ocurrió un error');
+      const data = error.response?.data;
+      if (data?.requiresVerification) {
+        navigation.navigate('Verification', { email: data.email });
+      } else {
+        alert(data?.message || 'Ocurrió un error');
+      }
     }
   };
 

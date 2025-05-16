@@ -11,7 +11,7 @@ export type VerificationRouteProp = RouteProp<RootStackParamList, 'Verification'
 export const verifyCode = async (
   email: string,
   code: string
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; token?: string }> => {
   if (!code) {
     return { success: false, message: 'Por favor ingresa el código de verificación' };
   }
@@ -31,7 +31,7 @@ export const verifyCode = async (
     const data = await response.json();
 
     if (response.ok) {
-      return { success: true, message: 'Correo verificado exitosamente' };
+      return { success: true, message: data.message, token: data.token };
     } else {
       return { success: false, message: data.message || 'Código incorrecto' };
     }
