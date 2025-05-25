@@ -27,20 +27,31 @@ export const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-  searchBar: {
+searchBar: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: width * 0.025,
+  height: height * 0.05,
+},
+searchInput: {
+  flex: 1,
+  marginLeft: width * 0.02,
+  color: "#000",
+},
+  searchBlock: {
     backgroundColor: "white",
     borderRadius: width * 0.03,
-    flexDirection: "row",
-    alignItems: "center",
     width: width * 0.9,
-    height: height * 0.05,
+    alignSelf: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     marginBottom: height * 0.01,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: width * 0.02,
-    color: "#000",
-  },
+
+
   filters: {
     flexDirection: "row",
     justifyContent: "space-evenly",
@@ -80,18 +91,11 @@ export const styles = StyleSheet.create({
     borderColor: "#eee",
     zIndex: 10,
   },
-  predictionList: {
-    backgroundColor: "white",
-    width: width * 0.9,
-    maxHeight: height * 0.25,
-    borderRadius: width * 0.02,
-    marginTop: height * 0.01,
-    marginBottom: height * 0.01,
-    position: "absolute",
-    top: height * 0.12,
-    zIndex: 999,
-    elevation: 5,
-  },
+predictionList: {
+  maxHeight: height * 0.25,
+  borderTopWidth: 1,
+  borderColor: "#eee",
+},
   predictionItem: {
     padding: height * 0.013,
   },
@@ -270,4 +274,5 @@ export const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: "center",
   },
+  
 })

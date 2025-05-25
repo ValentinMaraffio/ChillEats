@@ -72,6 +72,8 @@ export default function MainScreen() {
     top: height * 0.2, 
     bottom: height, 
   }
+  
+
 
   // Set up a listener for the animated value
   useEffect(() => {
@@ -493,7 +495,7 @@ export default function MainScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={80}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setPredictions([]); }}>
           <View style={{ flex: 1 }}>
             <MapView
               ref={mapRef}
@@ -545,6 +547,7 @@ export default function MainScreen() {
             )}
 
             <View style={styles.searchContainer}>
+            <View style={styles.searchBlock}>
               <View style={styles.searchBar}>
                 <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
                 <TextInput
@@ -554,13 +557,10 @@ export default function MainScreen() {
                   value={searchText}
                   onChangeText={(text) => {
                     setSearchText(text)
-
-                    // If text is cleared, reset the map and clear predictions
                     if (!text || text.trim() === "") {
                       resetMap()
-                      setPredictions([]) // Explicitly clear predictions
+                      setPredictions([])
                     } else {
-                      // Only fetch autocomplete if there's text
                       handleAutocomplete(text)
                     }
                   }}
@@ -580,6 +580,8 @@ export default function MainScreen() {
                   style={styles.predictionList}
                 />
               )}
+            </View>
+
 
               <View style={styles.filters}>
                 {["Localidad", "Limitación", "Precio", "Local"].map((filter) => (
