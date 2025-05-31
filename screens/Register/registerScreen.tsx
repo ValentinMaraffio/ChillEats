@@ -24,6 +24,7 @@ import {
 } from './registerBackend';
 import { styles } from './registerStyles';
 import BottomNavBar from "../../components/bottomNavBar"
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
 
 export default function RegisterScreen() {
   const navigation = useNavigation<RegisterNavigationProp>();
@@ -31,7 +32,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const isKeyboardVisible = useKeyboardVisibility()
 
   const handleRegister = async () => {
     // Validate form

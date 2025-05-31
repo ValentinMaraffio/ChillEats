@@ -7,11 +7,12 @@ import { ProfileProps, handleUserLogout } from './profileBackend';
 import { styles } from './profileStyles';
 import { useState } from 'react';
 import BottomNavBar from "../../components/bottomNavBar"
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
 
 export default function ProfileScreen({ route, navigation }: ProfileProps) {
   const { username, email } = route.params;
   const { logout } = useAuth();
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const isKeyboardVisible = useKeyboardVisibility()
 
   const handleLogout = () => {
     handleUserLogout(logout, navigation);

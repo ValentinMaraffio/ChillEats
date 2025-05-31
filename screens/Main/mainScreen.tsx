@@ -37,13 +37,14 @@ import {
 } from "./mainBackend"
 import { useFavorites } from "../../context/favoritesContext"
 import BottomNavBar from "../../components/bottomNavBar"
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" //Agregar esto cuando se use el teclado
 
 const { width, height } = Dimensions.get("window")
 
 export default function MainScreen() {
   const scrollX = useRef(new Animated.Value(0)).current
   const flatListRef = useRef<FlatList>(null)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const isKeyboardVisible = useKeyboardVisibility()
   const { user } = useAuth()
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites()
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null)
@@ -179,14 +180,6 @@ export default function MainScreen() {
       const coords = await getCurrentLocation()
       setLocation(coords)
     })()
-
-    const showSubscription = Keyboard.addListener("keyboardDidShow", () => setIsKeyboardVisible(true))
-    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => setIsKeyboardVisible(false))
-
-    return () => {
-      showSubscription.remove()
-      hideSubscription.remove()
-    }
   }, [])
 
   const centerMapOnUser = async () => {

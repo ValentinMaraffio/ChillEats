@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import { useAuth } from '../../context/authContext';
 import BottomNavBar from "../../components/bottomNavBar"
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
 
 import { 
   icon, 
@@ -32,7 +33,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login } = useAuth();
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const isKeyboardVisible = useKeyboardVisibility()
   
   // Modified to handle the login directly in this component
   const handleLogin = async () => {

@@ -5,10 +5,12 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { styles } from './ForgotStyles';
 import axios from 'axios';
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>>();
   const [email, setEmail] = useState('');
+  const isKeyboardVisible = useKeyboardVisibility()
 
   const handleSendCode = async () => {
     try {

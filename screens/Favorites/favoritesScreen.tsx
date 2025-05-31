@@ -13,6 +13,7 @@ import { calculateDistance } from "../Main/mainBackend"
 import * as Location from "expo-location"
 import { useEffect, useState } from "react"
 import BottomNavBar from "../../components/bottomNavBar"
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
 
 const Tag = ({ label }: { label: string }) => (
   <View style={tagStyle.container}>
@@ -25,7 +26,7 @@ export default function FavoritesScreen() {
   const { user } = useAuth()
   const { favorites, removeFavorite } = useFavorites()
   const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null)
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
+  const isKeyboardVisible = useKeyboardVisibility()
 
   // Obtener la ubicación del usuario al cargar la pantalla
   useEffect(() => {
