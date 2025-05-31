@@ -8,4 +8,6 @@ export type RootStackParamList = {
     username: string;
     email: string;
   };
+  ForgotPassword: undefined,
+  ResetPassword: {email: string},
 };

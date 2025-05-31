@@ -15,7 +15,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "hooks/useKeyboardVisibility"  ],
   "exclude": [
     "node_modules",
     "babel.config.js",
