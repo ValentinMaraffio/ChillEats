@@ -68,7 +68,7 @@ searchInput: {
   filterText: {
     fontSize: width * 0.032,
     color: "#000",
-  },
+  },/*
   shadowOverlay: {
     position: "absolute",
     bottom: height * 0.074,
@@ -77,7 +77,7 @@ searchInput: {
     backgroundColor: "#000",
     opacity: 0.5,
     zIndex: 9,
-  },
+  },*/
   bottomNav: {
     position: "absolute",
     bottom: 0,
@@ -128,7 +128,7 @@ predictionList: {
     padding: width * 0.04,
     elevation: 4,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
     zIndex: 10,
@@ -157,31 +157,24 @@ predictionList: {
     alignItems: "center", // Add this to center the FlatList
   },
   carouselCard: {
-    width: width * 0.75,
-    backgroundColor: "white",
-    marginHorizontal: 8,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    justifyContent: "center",
-  },
-  carouselCardSelected: {
-    borderColor: "#ff9500",
-    borderWidth: 2,
-  },
-  carouselCardNotSelected: {
-    borderWidth: 0,
-    transform: [{ scale: 1 }],
-  },
+  backgroundColor: "white",
+  borderRadius: 16,
+  padding: 16,
+  elevation: 4,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+  justifyContent: "center",
+  // Removemos width de aquí porque se define dinámicamente
+},
   badges: {
     flexDirection: "row",
     marginTop: 8,
     gap: 8,
   },
+
+  /*
   carouselNavigation: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -191,6 +184,7 @@ predictionList: {
     right: width * 0.05,
     zIndex: 10,
   },
+  
   carouselNavButton: {
     backgroundColor: "white",
     borderRadius: 20,
@@ -203,7 +197,7 @@ predictionList: {
     shadowOpacity: 0.2,
     shadowRadius: 3,
     elevation: 3,
-  },
+  },*/
   badge: {
     backgroundColor: "#eee",
     paddingHorizontal: 10,

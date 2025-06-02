@@ -1,7 +1,7 @@
 "use client"
 
 import "react-native-get-random-values"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import {
   Dimensions,
   View,
@@ -37,7 +37,7 @@ import {
 } from "./mainBackend"
 import { useFavorites } from "../../context/favoritesContext"
 import BottomNavBar from "../../components/bottomNavBar"
-import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" //Agregar esto cuando se use el teclado
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
 
 const { width, height } = Dimensions.get("window")
 
@@ -56,25 +56,66 @@ export default function MainScreen() {
   const [hasSelectedPrediction, setHasSelectedPrediction] = useState(false)
   const mapRef = useRef<MapView>(null)
   const markerPressRef = useRef(false)
-  const ITEM_WIDTH = Dimensions.get("window").width * 0.8
-  const SPACING = 10
+  const isScrollingRef = useRef(false)
+
+  // Nuevo estado para controlar si la card es deslizable o no
+  const [isCardScrollable, setIsCardScrollable] = useState(true)
+
+  // Carousel configuration with proper centering
+  const ITEM_WIDTH = width * 0.75
+  const SPACING = 20
+  const TOTAL_ITEM_WIDTH = ITEM_WIDTH + SPACING
+  const SIDE_SPACING = (width - ITEM_WIDTH) / 2 // This ensures proper centering
+
   const [nearbyPlacesList, setNearbyPlacesList] = useState<Place[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isScrolling, setIsScrolling] = useState(false)
-  const swipeStartX = useRef(0)
-  const [visibleCards, setVisibleCards] = useState<Place[]>([])
-  const isFirstSelectionRef = useRef(true)
 
   const [showBottomSheet, setShowBottomSheet] = useState(false)
   const bottomSheetPosition = useRef(new Animated.Value(height)).current
   const currentPositionRef = useRef(height)
-  const bottomSheetHeight = height * 0.6 
+  const bottomSheetHeight = height * 0.6
   const snapPoints = {
-    top: height * 0.2, 
-    bottom: height, 
+    top: height * 0.2,
+    bottom: height,
   }
-  
 
+  // Función unificada para centrar el carrusel con padding lateral
+  const scrollToIndex = useCallback(
+    (index: number, animated = false) => {
+      if (!flatListRef.current || nearbyPlacesList.length === 0) return
+
+      // Calcular el offset para centrar perfectamente cada card
+      const offsetX = index * TOTAL_ITEM_WIDTH
+
+      flatListRef.current.scrollToOffset({
+        offset: offsetX,
+        animated,
+      })
+    },
+    [nearbyPlacesList, TOTAL_ITEM_WIDTH],
+  )
+
+  // Actualizar el scroll cuando cambia el índice actual
+  useEffect(() => {
+    if (nearbyPlacesList.length > 0 && !isScrollingRef.current && isCardScrollable) {
+      const timer = setTimeout(() => {
+        scrollToIndex(currentIndex, true)
+      }, 100)
+
+      return () => clearTimeout(timer)
+    }
+  }, [currentIndex, nearbyPlacesList, scrollToIndex, isCardScrollable])
+
+  // Centrado adicional cuando se crea la lista por primera vez
+  useEffect(() => {
+    if (nearbyPlacesList.length > 0 && currentIndex === 0) {
+      const timer = setTimeout(() => {
+        scrollToIndex(0, false)
+      }, 200)
+
+      return () => clearTimeout(timer)
+    }
+  }, [nearbyPlacesList.length, scrollToIndex])
 
   // Set up a listener for the animated value
   useEffect(() => {
@@ -93,22 +134,17 @@ export default function MainScreen() {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderMove: (_, gestureState) => {
-        // Only allow dragging down from the expanded position or up from the collapsed position
         const newPosition = snapPoints.top + gestureState.dy
         if (newPosition >= snapPoints.top && newPosition <= snapPoints.bottom) {
           bottomSheetPosition.setValue(newPosition)
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        // Determine whether to snap to top or bottom
         if (gestureState.vy > 0.5 || (gestureState.dy > 50 && gestureState.vy > 0)) {
-          // Swipe down - close the sheet
           closeBottomSheet()
         } else if (gestureState.vy < -0.5 || (gestureState.dy < -50 && gestureState.vy < 0)) {
-          // Swipe up - expand the sheet
           expandBottomSheet()
         } else {
-          // Based on current position
           const currentPosition = currentPositionRef.current
           if (currentPosition > snapPoints.top + (snapPoints.bottom - snapPoints.top) / 2) {
             closeBottomSheet()
@@ -120,7 +156,6 @@ export default function MainScreen() {
     }),
   ).current
 
-  // Function to show and expand the bottom sheet
   const showAndExpandBottomSheet = () => {
     setShowBottomSheet(true)
     Animated.spring(bottomSheetPosition, {
@@ -130,7 +165,6 @@ export default function MainScreen() {
     }).start()
   }
 
-  // Function to expand the bottom sheet
   const expandBottomSheet = () => {
     Animated.spring(bottomSheetPosition, {
       toValue: snapPoints.top,
@@ -139,7 +173,6 @@ export default function MainScreen() {
     }).start()
   }
 
-  // Function to close the bottom sheet
   const closeBottomSheet = () => {
     Animated.timing(bottomSheetPosition, {
       toValue: snapPoints.bottom,
@@ -148,31 +181,6 @@ export default function MainScreen() {
     }).start(() => {
       setShowBottomSheet(false)
     })
-  }
-
-  // Update visible cards whenever the current index changes
-  useEffect(() => {
-    if (nearbyPlacesList.length > 0) {
-      updateVisibleCards(currentIndex)
-    }
-  }, [currentIndex, nearbyPlacesList])
-
-  // Function to update the three visible cards
-  const updateVisibleCards = (index: number) => {
-    if (nearbyPlacesList.length === 0) return
-
-    const totalPlaces = nearbyPlacesList.length
-
-    // Calculate previous index with loop
-    const prevIndex = index === 0 ? totalPlaces - 1 : index - 1
-
-    // Calculate next index with loop
-    const nextIndex = index === totalPlaces - 1 ? 0 : index + 1
-
-    // Create array with previous, current, and next places
-    const cards = [nearbyPlacesList[prevIndex], nearbyPlacesList[index], nearbyPlacesList[nextIndex]]
-
-    setVisibleCards(cards)
   }
 
   useEffect(() => {
@@ -206,23 +214,27 @@ export default function MainScreen() {
       {
         latitude: place.geometry.location.lat,
         longitude: place.geometry.location.lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
       },
       1000,
     )
   }
 
-  // Reset the map to initial state
+  // Función para ocultar las cards
+  const hideCards = () => {
+    setSelectedPlace(null)
+  }
+
   const resetMap = () => {
     setPlaces([])
     setSelectedPlace(null)
     setNearbyPlacesList([])
-    setVisibleCards([])
-    setPredictions([]) // Clear predictions when resetting the map
-    setShowBottomSheet(false) // Close bottom sheet when resetting
+    setPredictions([])
+    setShowBottomSheet(false)
+    setCurrentIndex(0)
+    setIsCardScrollable(true) // Resetear el estado de scrollable
 
-    // Center map on user's location
     if (location) {
       mapRef.current?.animateToRegion({
         latitude: location.latitude,
@@ -233,72 +245,7 @@ export default function MainScreen() {
     }
   }
 
-  // Navigate to the next or previous place
-  const navigateToPlace = (direction: "next" | "prev") => {
-    if (!nearbyPlacesList.length || isScrolling) return
-
-    setIsScrolling(true)
-
-    let newIndex = currentIndex
-
-    if (direction === "next") {
-      // If at the end, go to the beginning (closest place)
-      newIndex = currentIndex === nearbyPlacesList.length - 1 ? 0 : currentIndex + 1
-    } else {
-      // If at the beginning, go to the end (furthest place)
-      newIndex = currentIndex === 0 ? nearbyPlacesList.length - 1 : currentIndex - 1
-    }
-
-    setCurrentIndex(newIndex)
-    const place = nearbyPlacesList[newIndex]
-    setSelectedPlace(place)
-    centerMapOnPlace(place)
-
-    // Reset the FlatList to show the middle card with a consistent position
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: 1,
-        animated: false,
-        viewPosition: 0.5,
-      })
-
-      // Reset scrolling state after animation completes
-      setTimeout(() => {
-        setIsScrolling(false)
-      }, 200)
-    }, 50)
-  }
-
-  const handleScrollBegin = (event: any) => {
-    swipeStartX.current = event.nativeEvent.contentOffset.x
-  }
-
-  const handleScrollEnd = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x
-    const viewSize = ITEM_WIDTH + SPACING * 2
-    const index = Math.round(offsetX / viewSize)
-
-    // Determine if we need to navigate
-    if (index === 0) {
-      // Swiped to previous
-      navigateToPlace("prev")
-    } else if (index === 2) {
-      // Swiped to next
-      navigateToPlace("next")
-    }
-
-    // Always reset to center position after scrolling
-    setTimeout(() => {
-      flatListRef.current?.scrollToIndex({
-        index: 1,
-        animated: false,
-        viewPosition: 0.5,
-      })
-    }, 10)
-  }
-
   const handleSearch = async () => {
-    // If search text is empty, reset the map to initial state
     if (!searchText || !searchText.trim()) {
       resetMap()
       return
@@ -312,63 +259,26 @@ export default function MainScreen() {
     }
 
     setPredictions([])
-    isFirstSelectionRef.current = true
 
     const results = await searchPlaces(searchText, location)
 
-    // Clear any previously selected place
-    setSelectedPlace(null)
-
-    // Close bottom sheet if open
     if (showBottomSheet) {
       closeBottomSheet()
     }
 
-    // Set the places from search results
     setPlaces(results)
-
-    // Sort places by distance from user and set the list
     const sortedPlaces = sortPlacesByDistance(results, location)
     setNearbyPlacesList(sortedPlaces)
+    setIsCardScrollable(true) // Búsqueda normal permite scroll
 
-    // If we have results, adjust the map to show all markers
     if (sortedPlaces.length > 0) {
-      // Don't automatically select the first place
-      // Just center the map to show all markers
-      if (location && sortedPlaces.length > 0) {
-        // Find the average position of all places to center the map
-        let sumLat = 0
-        let sumLng = 0
-        let maxDist = 0
+      setCurrentIndex(0)
+      setSelectedPlace(sortedPlaces[0])
+      centerMapOnPlace(sortedPlaces[0])
 
-        sortedPlaces.forEach((place) => {
-          sumLat += place.geometry.location.lat
-          sumLng += place.geometry.location.lng
-
-          // Calculate distance from user to determine zoom level
-          const dist = calculateDistance(
-            location.latitude,
-            location.longitude,
-            place.geometry.location.lat,
-            place.geometry.location.lng,
-          )
-
-          if (dist > maxDist) maxDist = dist
-        })
-
-        const avgLat = sumLat / sortedPlaces.length
-        const avgLng = sumLng / sortedPlaces.length
-
-        // Adjust delta based on the maximum distance
-        const delta = Math.min(0.05, Math.max(0.01, maxDist * 0.05))
-
-        mapRef.current?.animateToRegion({
-          latitude: avgLat,
-          longitude: avgLng,
-          latitudeDelta: delta,
-          longitudeDelta: delta,
-        })
-      }
+      setTimeout(() => {
+        scrollToIndex(0, false)
+      }, 300)
     }
   }
 
@@ -386,51 +296,34 @@ export default function MainScreen() {
 
   const handleSelectPlace = (place: Place) => {
     markerPressRef.current = true
-    setSelectedPlace(place)
 
-    // Close bottom sheet if open
     if (showBottomSheet) {
       closeBottomSheet()
     }
 
-    // Sort places by distance from user's location
-    const sortedPlaces = sortPlacesByDistance(places, location)
-    setNearbyPlacesList(sortedPlaces)
-    centerMapOnPlace(place)
+    // Si hay múltiples lugares, mostrar el carrusel normal
+    if (places.length > 1) {
+      const sortedPlaces = sortPlacesByDistance(places, location)
+      const index = sortedPlaces.findIndex(
+        (p: Place) =>
+          p.geometry.location.lat === place.geometry.location.lat &&
+          p.geometry.location.lng === place.geometry.location.lng,
+      )
 
-    // Find the index of the selected place in the sorted list
-    const index = sortedPlaces.findIndex(
-      (p: Place) =>
-        p.geometry.location.lat === place.geometry.location.lat &&
-        p.geometry.location.lng === place.geometry.location.lng,
-    )
-
-    if (index >= 0) {
-      setCurrentIndex(index)
-
-      // Use a longer delay for the first selection
-      const delay = isFirstSelectionRef.current ? 300 : 50
-
-      // Wait for the visible cards to update before scrolling
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: 1, // Always scroll to the middle card
-          animated: false,
-          viewPosition: 0.5,
-        })
-
-        // Try a second scroll after a short delay to ensure it's centered
-        if (isFirstSelectionRef.current) {
-          setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: 1,
-              animated: false,
-              viewPosition: 0.5,
-            })
-            isFirstSelectionRef.current = false
-          }, 200)
-        }
-      }, delay)
+      if (index >= 0) {
+        setNearbyPlacesList(sortedPlaces)
+        setCurrentIndex(index)
+        setSelectedPlace(place)
+        centerMapOnPlace(place)
+        setIsCardScrollable(true) // Permitir scroll para múltiples lugares
+      }
+    } else {
+      // Si solo hay un lugar (desde predicción), mostrar solo ese lugar sin scroll
+      setNearbyPlacesList([place])
+      setCurrentIndex(0)
+      setSelectedPlace(place)
+      centerMapOnPlace(place)
+      setIsCardScrollable(false) // No permitir scroll para un solo lugar
     }
   }
 
@@ -442,26 +335,23 @@ export default function MainScreen() {
     const place = await getPlaceDetails(prediction.place_id)
 
     if (place) {
+      // Para predicciones, solo mostrar ese lugar específico
       setPlaces([place])
-      handleSelectPlace(place)
+      setNearbyPlacesList([place])
+      setCurrentIndex(0)
+      setSelectedPlace(place)
+      setIsCardScrollable(false) // No permitir scroll para predicciones
 
-      mapRef.current?.animateToRegion({
-        latitude: place.geometry.location.lat,
-        longitude: place.geometry.location.lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      })
+      centerMapOnPlace(place)
     }
   }
 
-  // Handle tap on the selected card (middle card)
   const handleSelectedCardPress = () => {
     if (selectedPlace) {
       showAndExpandBottomSheet()
     }
   }
 
-  // Toggle favorite status for a place
   const toggleFavorite = (place: Place) => {
     if (isFavorite(place)) {
       removeFavorite(place)
@@ -470,6 +360,129 @@ export default function MainScreen() {
       addFavorite(place)
       Alert.alert("Agregado", "El lugar ha sido agregado a tus favoritos")
     }
+  }
+
+  const handleScrollBegin = () => {
+    if (!isCardScrollable) return // No permitir scroll si no es scrollable
+    isScrollingRef.current = true
+  }
+
+  // Manejador de scroll mejorado para evitar la "corrección" posterior
+  const handleScrollEnd = (event: any) => {
+    if (nearbyPlacesList.length <= 1 || !isCardScrollable) return
+
+    const offsetX = event.nativeEvent.contentOffset.x
+    // Calculamos el índice teniendo en cuenta el padding lateral
+    const index = Math.round(offsetX / TOTAL_ITEM_WIDTH)
+
+    if (index !== currentIndex && index >= 0 && index < nearbyPlacesList.length) {
+      // Actualizamos el estado sin animación adicional
+      setCurrentIndex(index)
+      const newPlace = nearbyPlacesList[index]
+      setSelectedPlace(newPlace)
+      centerMapOnPlace(newPlace)
+    }
+
+    isScrollingRef.current = false
+  }
+
+  // Renderizar el carrusel con padding lateral para centrado perfecto
+  const renderCarousel = () => {
+    if (!selectedPlace || isKeyboardVisible || showBottomSheet || nearbyPlacesList.length === 0) {
+      return null
+    }
+
+    return (
+      <View style={styles.carouselContainer}>
+        <FlatList
+          ref={flatListRef}
+          horizontal
+          data={nearbyPlacesList}
+          keyExtractor={(item, index) =>
+            `carousel-${index}-${item.geometry.location.lat}-${item.geometry.location.lng}`
+          }
+          getItemLayout={(data, index) => ({
+            length: TOTAL_ITEM_WIDTH,
+            offset: TOTAL_ITEM_WIDTH * index,
+            index,
+          })}
+          renderItem={({ item, index }) => {
+            const isSelected = index === currentIndex
+
+            return (
+              <View
+                style={{
+                  width: TOTAL_ITEM_WIDTH,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    if (index !== currentIndex && isCardScrollable) {
+                      setCurrentIndex(index)
+                      setSelectedPlace(nearbyPlacesList[index])
+                      centerMapOnPlace(nearbyPlacesList[index])
+                    } else {
+                      handleSelectedCardPress()
+                    }
+                  }}
+                  style={[
+                    styles.carouselCard,
+                    {
+                      width: ITEM_WIDTH,
+                      opacity: isSelected ? 1 : 0.7,
+                      transform: [{ scale: isSelected ? 1 : 0.95 }],
+                    },
+                  ]}
+                >
+                  <Text style={styles.placeName}>{item.name}</Text>
+                  <Text style={styles.placeRating}>
+                    ⭐ {item.rating} ({item.user_ratings_total} reseñas)
+                  </Text>
+                  {location && (
+                    <Text style={styles.placeDistance}>
+                      🚶{" "}
+                      {calculateDistance(
+                        location.latitude,
+                        location.longitude,
+                        item.geometry.location.lat,
+                        item.geometry.location.lng,
+                      ).toFixed(1)}{" "}
+                      km
+                    </Text>
+                  )}
+                  <View style={styles.badges}>
+                    <Text style={styles.badge}>Celiaco</Text>
+                    <Text style={styles.badge}>Vegetariano</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            )
+          }}
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={TOTAL_ITEM_WIDTH}
+          snapToAlignment="center"
+          decelerationRate={0.8}
+          disableIntervalMomentum={true}
+          snapToOffsets={nearbyPlacesList.map((_, index) => index * TOTAL_ITEM_WIDTH)}
+          contentContainerStyle={{
+            paddingHorizontal: SIDE_SPACING,
+          }}
+          scrollEnabled={isCardScrollable} // Controlar si se puede hacer scroll o no
+          onScrollBeginDrag={handleScrollBegin}
+          onMomentumScrollEnd={handleScrollEnd}
+          onScrollToIndexFailed={(info) => {
+            const wait = new Promise((resolve) => setTimeout(resolve, 500))
+            wait.then(() => {
+              if (flatListRef.current) {
+                scrollToIndex(info.index, false)
+              }
+            })
+          }}
+        />
+      </View>
+    )
   }
 
   if (!location) {
@@ -488,7 +501,20 @@ export default function MainScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={80}
       >
-        <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setPredictions([]); }}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss()
+            setPredictions([])
+            // Si el bottomSheet está visible, solo cerrarlo sin ocultar las cards
+            if (showBottomSheet) {
+              closeBottomSheet()
+            }
+            // Si no hay bottomSheet pero hay cards visibles, ocultarlas
+            else if (selectedPlace) {
+              hideCards()
+            }
+          }}
+        >
           <View style={{ flex: 1 }}>
             <MapView
               ref={mapRef}
@@ -508,9 +534,12 @@ export default function MainScreen() {
                 if (markerPressRef.current) {
                   markerPressRef.current = false
                 } else {
-                  setSelectedPlace(null)
                   if (showBottomSheet) {
+                    // Solo cerrar el bottomSheet sin ocultar las cards
                     closeBottomSheet()
+                  } else {
+                    // Ocultar las cards cuando se toca el mapa (solo si no hay bottomSheet)
+                    hideCards()
                   }
                 }
               }}
@@ -540,41 +569,40 @@ export default function MainScreen() {
             )}
 
             <View style={styles.searchContainer}>
-            <View style={styles.searchBlock}>
-              <View style={styles.searchBar}>
-                <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
-                <TextInput
-                  placeholder="Buscar..."
-                  placeholderTextColor="gray"
-                  style={styles.searchInput}
-                  value={searchText}
-                  onChangeText={(text) => {
-                    setSearchText(text)
-                    if (!text || text.trim() === "") {
-                      resetMap()
-                      setPredictions([])
-                    } else {
-                      handleAutocomplete(text)
-                    }
-                  }}
-                  onSubmitEditing={handleSearch}
-                />
+              <View style={styles.searchBlock}>
+                <View style={styles.searchBar}>
+                  <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
+                  <TextInput
+                    placeholder="Buscar..."
+                    placeholderTextColor="gray"
+                    style={styles.searchInput}
+                    value={searchText}
+                    onChangeText={(text) => {
+                      setSearchText(text)
+                      if (!text || text.trim() === "") {
+                        resetMap()
+                        setPredictions([])
+                      } else {
+                        handleAutocomplete(text)
+                      }
+                    }}
+                    onSubmitEditing={handleSearch}
+                  />
+                </View>
+
+                {predictions.length > 0 && (
+                  <FlatList
+                    data={predictions}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity style={styles.predictionItem} onPress={() => handleSelectPrediction(item)}>
+                        <Text style={styles.predictionText}>{item.description}</Text>
+                      </TouchableOpacity>
+                    )}
+                    keyExtractor={(item) => item.place_id}
+                    style={styles.predictionList}
+                  />
+                )}
               </View>
-
-              {predictions.length > 0 && (
-                <FlatList
-                  data={predictions}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity style={styles.predictionItem} onPress={() => handleSelectPrediction(item)}>
-                      <Text style={styles.predictionText}>{item.description}</Text>
-                    </TouchableOpacity>
-                  )}
-                  keyExtractor={(item) => item.place_id}
-                  style={styles.predictionList}
-                />
-              )}
-            </View>
-
 
               <View style={styles.filters}>
                 {["Localidad", "Limitación", "Precio", "Local"].map((filter) => (
@@ -585,100 +613,7 @@ export default function MainScreen() {
               </View>
             </View>
 
-            {selectedPlace && !isKeyboardVisible && !showBottomSheet && (
-              <View style={styles.carouselContainer}>
-                {visibleCards.length > 0 && (
-                  <FlatList
-                    ref={flatListRef}
-                    horizontal
-                    data={visibleCards}
-                    keyExtractor={(item, index) =>
-                      `${item.geometry.location.lat}-${item.geometry.location.lng}-${index}`
-                    }
-                    initialScrollIndex={1}
-                    getItemLayout={(data, index) => ({
-                      length: ITEM_WIDTH + SPACING * 2,
-                      offset: (ITEM_WIDTH + SPACING * 2) * index,
-                      index,
-                    })}
-                    renderItem={({ item, index }) => {
-                      const isSelected = index === 1 // Middle card is selected
-                      return (
-                        <TouchableOpacity
-                          onPress={() => {
-                            if (index === 0) {
-                              // Left card - navigate to previous
-                              navigateToPlace("prev")
-                            } else if (index === 2) {
-                              // Right card - navigate to next
-                              navigateToPlace("next")
-                            } else if (isSelected) {
-                              // Middle card - show bottom sheet
-                              handleSelectedCardPress()
-                            }
-                          }}
-                          style={[
-                            styles.carouselCard,
-                            isSelected ? styles.carouselCardSelected : styles.carouselCardNotSelected,
-                          ]}
-                        >
-                          <Text style={styles.placeName}>{item.name}</Text>
-                          <Text style={styles.placeRating}>
-                            ⭐ {item.rating} ({item.user_ratings_total} reseñas)
-                          </Text>
-                          {location && (
-                            <Text style={styles.placeDistance}>
-                              🚶{" "}
-                              {calculateDistance(
-                                location.latitude,
-                                location.longitude,
-                                item.geometry.location.lat,
-                                item.geometry.location.lng,
-                              ).toFixed(1)}{" "}
-                              km
-                            </Text>
-                          )}
-                          <View style={styles.badges}>
-                            <Text style={styles.badge}>Celiaco</Text>
-                            <Text style={styles.badge}>Vegetariano</Text>
-                          </View>
-                        </TouchableOpacity>
-                      )
-                    }}
-                    showsHorizontalScrollIndicator={false}
-                    snapToInterval={ITEM_WIDTH + SPACING * 2}
-                    snapToAlignment="center"
-                    decelerationRate="fast"
-                    contentContainerStyle={{
-                      paddingHorizontal: (width - ITEM_WIDTH) / 2 - SPACING, // This centers the cards properly
-                    }}
-                    onScrollBeginDrag={handleScrollBegin}
-                    onMomentumScrollEnd={handleScrollEnd}
-                    pagingEnabled={true}
-                    onScrollToIndexFailed={(info) => {
-                      const wait = new Promise((resolve) => setTimeout(resolve, 500))
-                      wait.then(() => {
-                        flatListRef.current?.scrollToIndex({
-                          index: 1,
-                          animated: false,
-                          viewPosition: 0.5,
-                        })
-                      })
-                    }}
-                  />
-                )}
-
-                {/* Navigation buttons for the carousel */}
-                <View style={styles.carouselNavigation}>
-                  <TouchableOpacity style={styles.carouselNavButton} onPress={() => navigateToPlace("prev")}>
-                    <Ionicons name="chevron-back" size={24} color="#ff9500" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.carouselNavButton} onPress={() => navigateToPlace("next")}>
-                    <Ionicons name="chevron-forward" size={24} color="#ff9500" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            {renderCarousel()}
 
             {/* Bottom Sheet */}
             {showBottomSheet && (
@@ -726,7 +661,6 @@ export default function MainScreen() {
                         <Text style={styles.badge}>Vegetariano</Text>
                       </View>
 
-                      {/* Additional content can be added here */}
                       <Text style={styles.bottomSheetDescription}>
                         Desliza hacia arriba para ver más información o hacia abajo para cerrar.
                       </Text>
@@ -739,8 +673,7 @@ export default function MainScreen() {
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
 
-     {!isKeyboardVisible && <BottomNavBar />}
-
+      {!isKeyboardVisible && <BottomNavBar />}
     </SafeAreaView>
   )
 }
