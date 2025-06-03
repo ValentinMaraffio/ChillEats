@@ -46,4 +46,9 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: wp('4%'),
   },
+  backButton: {
+    position: "absolute",
+    top: hp("6%"),
+    left: wp("5%"),
+  },
 });

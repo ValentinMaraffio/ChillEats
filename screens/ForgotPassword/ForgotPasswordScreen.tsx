@@ -6,6 +6,7 @@ import { RootStackParamList } from '../../types/navigation';
 import { styles } from './ForgotStyles';
 import axios from 'axios';
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
+import { FontAwesome } from "@expo/vector-icons"
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>>();
@@ -14,7 +15,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendCode = async () => {
     try {
-      await axios.patch('http://192.168.0.236:8000/api/auth/send-forgot-password-code', { email });
+      await axios.patch('http://192.168.0.6:8000/api/auth/send-forgot-password-code', { email });
       Alert.alert('Éxito', 'Código enviado a tu correo');
       navigation.navigate('ResetPassword', { email });
     } catch (err: any) {
@@ -24,6 +25,9 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Login")}>
+                <FontAwesome name="arrow-left" size={24} color="white" />
+              </TouchableOpacity>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
           <Text style={styles.title}>Recuperar Contraseña</Text>

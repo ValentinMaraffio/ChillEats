@@ -6,18 +6,20 @@ import type { RootStackParamList } from "../../types/navigation";
 // Type definitions
 export type VerificationNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export type VerificationRouteProp = RouteProp<RootStackParamList, 'Verification'>;
+export const iconEmail = require('../../assets/img/email.png');
 
 // API functions
 export const verifyCode = async (
   email: string,
   code: string
+
 ): Promise<{ success: boolean; message: string; token?: string }> => {
   if (!code) {
     return { success: false, message: 'Por favor ingresa el código de verificación' };
   }
 
   try {
-    const response = await fetch('http://192.168.0.236:8000/api/auth/verify-verification-code', {
+    const response = await fetch('http://192.168.0.6:8000/api/auth/verify-verification-code', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -45,7 +47,7 @@ export const resendVerificationCode = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await fetch('http://192.168.0.236:8000/api/auth/send-verification-code', {
+    const response = await fetch('http://192.168.0.6:8000/api/auth/send-verification-code', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
