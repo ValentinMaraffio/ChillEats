@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions } from "react-native"
+import { StyleSheet, Dimensions, Platform, StatusBar } from "react-native"
 
 const { width, height } = Dimensions.get("window")
 
@@ -27,17 +27,17 @@ export const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
   },
-searchBar: {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingHorizontal: width * 0.025,
-  height: height * 0.05,
-},
-searchInput: {
-  flex: 1,
-  marginLeft: width * 0.02,
-  color: "#000",
-},
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: width * 0.025,
+    height: height * 0.05,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: width * 0.02,
+    color: "#000",
+  },
   searchBlock: {
     backgroundColor: "white",
     borderRadius: width * 0.03,
@@ -50,8 +50,6 @@ searchInput: {
     shadowRadius: 4,
     marginBottom: height * 0.01,
   },
-
-
   filters: {
     flexDirection: "row",
     justifyContent: "space-evenly",
@@ -68,16 +66,7 @@ searchInput: {
   filterText: {
     fontSize: width * 0.032,
     color: "#000",
-  },/*
-  shadowOverlay: {
-    position: "absolute",
-    bottom: height * 0.074,
-    width: "100%",
-    height: height * 0.004,
-    backgroundColor: "#000",
-    opacity: 0.5,
-    zIndex: 9,
-  },*/
+  },
   bottomNav: {
     position: "absolute",
     bottom: 0,
@@ -91,11 +80,11 @@ searchInput: {
     borderColor: "#eee",
     zIndex: 10,
   },
-predictionList: {
-  maxHeight: height * 0.25,
-  borderTopWidth: 1,
-  borderColor: "#eee",
-},
+  predictionList: {
+    maxHeight: height * 0.25,
+    borderTopWidth: 1,
+    borderColor: "#eee",
+  },
   predictionItem: {
     padding: height * 0.013,
   },
@@ -154,50 +143,24 @@ predictionList: {
     bottom: height * 0.115,
     height: height * 0.18,
     width: "100%",
-    alignItems: "center", // Add this to center the FlatList
+    alignItems: "center",
   },
   carouselCard: {
-  backgroundColor: "white",
-  borderRadius: 16,
-  padding: 16,
-  elevation: 4,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.2,
-  shadowRadius: 4,
-  justifyContent: "center",
-  // Removemos width de aquí porque se define dinámicamente
-},
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 16,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    justifyContent: "center",
+  },
   badges: {
     flexDirection: "row",
     marginTop: 8,
     gap: 8,
   },
-
-  /*
-  carouselNavigation: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    position: "absolute",
-    top: height * 0.07,
-    left: width * 0.05,
-    right: width * 0.05,
-    zIndex: 10,
-  },
-  
-  carouselNavButton: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
-  },*/
   badge: {
     backgroundColor: "#eee",
     paddingHorizontal: 10,
@@ -205,7 +168,7 @@ predictionList: {
     borderRadius: 12,
     fontSize: 12,
   },
-  // Bottom sheet styles
+  // Bottom sheet styles mejorados con soporte para área segura
   bottomSheet: {
     position: "absolute",
     left: 0,
@@ -228,10 +191,12 @@ predictionList: {
     borderRadius: 3,
     alignSelf: "center",
     marginTop: 10,
+    marginBottom: 10,
   },
   bottomSheetContent: {
     padding: 20,
     flex: 1,
+    paddingTop: 10, // Reducido ya que el padding superior se maneja en el componente principal
   },
   bottomSheetHeader: {
     flexDirection: "row",
@@ -268,5 +233,17 @@ predictionList: {
     marginTop: 20,
     textAlign: "center",
   },
-  
+  // Nuevos estilos para contenido adicional del bottom sheet
+  bottomSheetSectionTitle: {
+    fontSize: width * 0.05,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 10,
+  },
+  bottomSheetText: {
+    fontSize: width * 0.04,
+    color: "#666",
+    lineHeight: width * 0.06,
+    marginBottom: 15,
+  },
 })

@@ -15,10 +15,10 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   FlatList,
-  Animated,
   StyleSheet,
-  PanResponder,
   Alert,
+  Animated as RNAnimated,
+  StatusBar,
 } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
 import type * as Location from "expo-location"
@@ -38,11 +38,21 @@ import {
 import { useFavorites } from "../../context/favoritesContext"
 import BottomNavBar from "../../components/bottomNavBar"
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedGestureHandler,
+  withSpring,
+  withTiming,
+  runOnJS,
+  clamp,
+} from "react-native-reanimated"
+import { PanGestureHandler } from "react-native-gesture-handler"
 
 const { width, height } = Dimensions.get("window")
 
 export default function MainScreen() {
-  const scrollX = useRef(new Animated.Value(0)).current
+  const scrollX = useRef(new RNAnimated.Value(0)).current
   const flatListRef = useRef<FlatList>(null)
   const isKeyboardVisible = useKeyboardVisibility()
   const { user } = useAuth()
@@ -65,26 +75,221 @@ export default function MainScreen() {
   const ITEM_WIDTH = width * 0.75
   const SPACING = 20
   const TOTAL_ITEM_WIDTH = ITEM_WIDTH + SPACING
-  const SIDE_SPACING = (width - ITEM_WIDTH) / 2 // This ensures proper centering
+  const SIDE_SPACING = (width - ITEM_WIDTH) / 2
 
   const [nearbyPlacesList, setNearbyPlacesList] = useState<Place[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
 
   const [showBottomSheet, setShowBottomSheet] = useState(false)
-  const bottomSheetPosition = useRef(new Animated.Value(height)).current
-  const currentPositionRef = useRef(height)
-  const bottomSheetHeight = height * 0.6
+  const bottomSheetHeight = height // Cambiar de height * 0.9 a height completo
+
+  // MEJORA: Ref para controlar cuando necesitamos reposicionar el carrusel
+  const needsRepositioning = useRef(false)
+
+  // MEJORA: Usando react-native-reanimated con límites más estrictos
+  const translateY = useSharedValue(height)
+
+  // Obtener la altura de la barra de estado
+  const statusBarHeight = StatusBar.currentHeight || 0
+  const safeAreaTop = Platform.OS === 'ios' ? 44 : statusBarHeight // iOS tiene notch/dynamic island
+
+  // MEJORA: Snap points con límites más seguros - respetar área segura
   const snapPoints = {
-    top: height * 0.2,
-    bottom: height,
+    expanded: 0, // Permitir que vaya hasta arriba completamente
+    middle: height * 0.4,
+    closed: height,
   }
 
-  // Función unificada para centrar el carrusel con padding lateral
+  // MEJORA: Límites absolutos para prevenir crashes - respetar área segura
+  const ABSOLUTE_MIN = 0 // Permitir ir hasta arriba completamente
+  const ABSOLUTE_MAX = height + 100
+
+  // Función para obtener el snap point más cercano con validación
+  const getClosestSnapPoint = (position: number) => {
+    // Asegurar que la posición esté dentro de límites seguros
+    const safePosition = Math.max(ABSOLUTE_MIN, Math.min(ABSOLUTE_MAX, position))
+
+    const distances = [
+      { point: snapPoints.expanded, distance: Math.abs(safePosition - snapPoints.expanded) },
+      { point: snapPoints.middle, distance: Math.abs(safePosition - snapPoints.middle) },
+      { point: snapPoints.closed, distance: Math.abs(safePosition - snapPoints.closed) },
+    ]
+    return distances.reduce((closest, current) => (current.distance < closest.distance ? current : closest)).point
+  }
+
+  // Función para cerrar el bottom sheet (llamada desde JS)
+  const closeBottomSheetJS = () => {
+    try {
+      setShowBottomSheet(false)
+      // MEJORA: Marcar que necesitamos reposicionar el carrusel
+      needsRepositioning.current = true
+    } catch (error) {
+      console.log("Error closing bottom sheet:", error)
+    }
+  }
+
+  // MEJORA: Gesture handler con límites más estrictos y validaciones
+  const gestureHandler = useAnimatedGestureHandler<any, { y: number }>({
+    onStart: (_, context) => {
+      context.y = translateY.value
+    },
+    onActive: (event, context) => {
+      // MEJORA: Validar que los valores sean números válidos
+      if (typeof context.y !== "number" || typeof event.translationY !== "number") {
+        return
+      }
+
+      const newPosition = context.y + event.translationY
+
+      // MEJORA: Usar clamp para límites más estrictos
+      let clampedPosition = clamp(newPosition, ABSOLUTE_MIN, ABSOLUTE_MAX)
+
+      // MEJORA: Resistencia más suave y controlada
+      if (newPosition < snapPoints.expanded) {
+        const overscroll = snapPoints.expanded - newPosition
+        clampedPosition = snapPoints.expanded - Math.min(overscroll * 0.2, 30) // Máximo 30px de overscroll
+      } else if (newPosition > snapPoints.closed) {
+        const overscroll = newPosition - snapPoints.closed
+        clampedPosition = snapPoints.closed + Math.min(overscroll * 0.2, 50) // Máximo 50px de overscroll
+      }
+
+      // MEJORA: Validar el valor final antes de asignarlo
+      if (typeof clampedPosition === "number" && !isNaN(clampedPosition)) {
+        translateY.value = clampedPosition
+      }
+    },
+    onEnd: (event) => {
+      try {
+        // MEJORA: Validar velocidad y posición
+        const velocity = typeof event.velocityY === "number" ? event.velocityY : 0
+        const currentPos = typeof translateY.value === "number" ? translateY.value : snapPoints.middle
+
+        // MEJORA: Limitar velocidad extrema
+        const clampedVelocity = clamp(velocity, -5000, 5000)
+
+        let targetPosition: number
+
+        // Lógica de snap mejorada con validaciones
+        if (Math.abs(clampedVelocity) > 1200) {
+          if (clampedVelocity > 0) {
+            // Movimiento rápido hacia abajo
+            if (currentPos < snapPoints.middle) {
+              targetPosition = snapPoints.middle
+            } else {
+              targetPosition = snapPoints.closed
+            }
+          } else {
+            // Movimiento rápido hacia arriba
+            if (currentPos > snapPoints.middle) {
+              targetPosition = snapPoints.middle
+            } else {
+              targetPosition = snapPoints.expanded
+            }
+          }
+        } else {
+          // Para velocidades normales, usar la posición más cercana
+          targetPosition = getClosestSnapPoint(currentPos)
+        }
+
+        // MEJORA: Validar posición objetivo
+        if (typeof targetPosition !== "number" || isNaN(targetPosition)) {
+          targetPosition = snapPoints.middle
+        }
+
+        // Animación con configuración más conservadora
+        if (targetPosition === snapPoints.closed) {
+          translateY.value = withTiming(
+            targetPosition,
+            {
+              duration: 300, // Duración un poco más larga para más estabilidad
+            },
+            (finished) => {
+              if (finished) {
+                runOnJS(closeBottomSheetJS)()
+              }
+            },
+          )
+        } else {
+          translateY.value = withSpring(targetPosition, {
+            damping: 25, // Más damping para más estabilidad
+            stiffness: 250, // Menos stiffness para suavidad
+            mass: 1, // Masa más alta para más estabilidad
+          })
+        }
+      } catch (error) {
+        // En caso de error, ir a posición segura
+        translateY.value = withTiming(snapPoints.middle, { duration: 300 })
+      }
+    },
+  })
+
+  // MEJORA: Estilo animado con validaciones
+  const bottomSheetStyle = useAnimatedStyle(() => {
+    // Validar que translateY.value sea un número válido
+    const translateValue =
+      typeof translateY.value === "number" && !isNaN(translateY.value)
+        ? clamp(translateY.value, ABSOLUTE_MIN, ABSOLUTE_MAX)
+        : snapPoints.closed
+
+    return {
+      transform: [{ translateY: translateValue }],
+    }
+  })
+
+  // MEJORA: Funciones de control más seguras
+  const showAndExpandBottomSheet = () => {
+    try {
+      setShowBottomSheet(true)
+      translateY.value = snapPoints.closed
+
+      // Animación de entrada más segura
+      setTimeout(() => {
+        translateY.value = withSpring(snapPoints.middle, {
+          damping: 25,
+          stiffness: 250,
+          mass: 1,
+        })
+      }, 50)
+    } catch (error) {
+      console.log("Error showing bottom sheet:", error)
+    }
+  }
+
+  const snapToExpanded = () => {
+    translateY.value = withSpring(snapPoints.expanded, {
+      damping: 25,
+      stiffness: 250,
+      mass: 1,
+    })
+  }
+
+  const snapToMiddle = () => {
+    translateY.value = withSpring(snapPoints.middle, {
+      damping: 25,
+      stiffness: 250,
+      mass: 1,
+    })
+  }
+
+  const closeBottomSheet = () => {
+    translateY.value = withTiming(
+      snapPoints.closed,
+      {
+        duration: 300,
+      },
+      (finished) => {
+        if (finished) {
+          runOnJS(closeBottomSheetJS)()
+        }
+      },
+    )
+  }
+
+  // MEJORA: Función unificada para centrar el carrusel con mejor control
   const scrollToIndex = useCallback(
     (index: number, animated = false) => {
       if (!flatListRef.current || nearbyPlacesList.length === 0) return
 
-      // Calcular el offset para centrar perfectamente cada card
       const offsetX = index * TOTAL_ITEM_WIDTH
 
       flatListRef.current.scrollToOffset({
@@ -95,93 +300,40 @@ export default function MainScreen() {
     [nearbyPlacesList, TOTAL_ITEM_WIDTH],
   )
 
-  // Actualizar el scroll cuando cambia el índice actual
+  // MEJORA: Effect para reposicionar el carrusel cuando se cierra el bottom sheet
   useEffect(() => {
-    if (nearbyPlacesList.length > 0 && !isScrollingRef.current && isCardScrollable) {
+    if (!showBottomSheet && needsRepositioning.current && nearbyPlacesList.length > 0) {
+      // Pequeño delay para asegurar que el carrusel esté visible
+      const timer = setTimeout(() => {
+        scrollToIndex(currentIndex, false) // Sin animación para posicionamiento inmediato
+        needsRepositioning.current = false
+      }, 100)
+
+      return () => clearTimeout(timer)
+    }
+  }, [showBottomSheet, currentIndex, nearbyPlacesList, scrollToIndex])
+
+  // Actualizar el scroll cuando cambia el índice actual (solo si no hay bottom sheet)
+  useEffect(() => {
+    if (nearbyPlacesList.length > 0 && !isScrollingRef.current && isCardScrollable && !showBottomSheet) {
       const timer = setTimeout(() => {
         scrollToIndex(currentIndex, true)
       }, 100)
 
       return () => clearTimeout(timer)
     }
-  }, [currentIndex, nearbyPlacesList, scrollToIndex, isCardScrollable])
+  }, [currentIndex, nearbyPlacesList, scrollToIndex, isCardScrollable, showBottomSheet])
 
   // Centrado adicional cuando se crea la lista por primera vez
   useEffect(() => {
-    if (nearbyPlacesList.length > 0 && currentIndex === 0) {
+    if (nearbyPlacesList.length > 0 && currentIndex === 0 && !showBottomSheet) {
       const timer = setTimeout(() => {
         scrollToIndex(0, false)
       }, 200)
 
       return () => clearTimeout(timer)
     }
-  }, [nearbyPlacesList.length, scrollToIndex])
-
-  // Set up a listener for the animated value
-  useEffect(() => {
-    const id = bottomSheetPosition.addListener(({ value }) => {
-      currentPositionRef.current = value
-    })
-
-    return () => {
-      bottomSheetPosition.removeListener(id)
-    }
-  }, [])
-
-  // Pan responder for the bottom sheet
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderMove: (_, gestureState) => {
-        const newPosition = snapPoints.top + gestureState.dy
-        if (newPosition >= snapPoints.top && newPosition <= snapPoints.bottom) {
-          bottomSheetPosition.setValue(newPosition)
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.vy > 0.5 || (gestureState.dy > 50 && gestureState.vy > 0)) {
-          closeBottomSheet()
-        } else if (gestureState.vy < -0.5 || (gestureState.dy < -50 && gestureState.vy < 0)) {
-          expandBottomSheet()
-        } else {
-          const currentPosition = currentPositionRef.current
-          if (currentPosition > snapPoints.top + (snapPoints.bottom - snapPoints.top) / 2) {
-            closeBottomSheet()
-          } else {
-            expandBottomSheet()
-          }
-        }
-      },
-    }),
-  ).current
-
-  const showAndExpandBottomSheet = () => {
-    setShowBottomSheet(true)
-    Animated.spring(bottomSheetPosition, {
-      toValue: snapPoints.top,
-      useNativeDriver: true,
-      bounciness: 4,
-    }).start()
-  }
-
-  const expandBottomSheet = () => {
-    Animated.spring(bottomSheetPosition, {
-      toValue: snapPoints.top,
-      useNativeDriver: true,
-      bounciness: 4,
-    }).start()
-  }
-
-  const closeBottomSheet = () => {
-    Animated.timing(bottomSheetPosition, {
-      toValue: snapPoints.bottom,
-      duration: 300,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowBottomSheet(false)
-    })
-  }
+  }, [nearbyPlacesList.length, scrollToIndex, showBottomSheet])
 
   useEffect(() => {
     ;(async () => {
@@ -224,16 +376,23 @@ export default function MainScreen() {
   // Función para ocultar las cards
   const hideCards = () => {
     setSelectedPlace(null)
+    setNearbyPlacesList([])
+    setCurrentIndex(0)
   }
 
-  const resetMap = () => {
+  // MEJORA: Función de reset más específica que no afecta el carrusel innecesariamente
+  const resetMapForNewSearch = () => {
     setPlaces([])
     setSelectedPlace(null)
     setNearbyPlacesList([])
     setPredictions([])
     setShowBottomSheet(false)
     setCurrentIndex(0)
-    setIsCardScrollable(true) // Resetear el estado de scrollable
+    setIsCardScrollable(true)
+    needsRepositioning.current = false // Reset del flag
+
+    // Reset seguro del bottom sheet
+    translateY.value = snapPoints.closed
 
     if (location) {
       mapRef.current?.animateToRegion({
@@ -245,9 +404,16 @@ export default function MainScreen() {
     }
   }
 
+  // MEJORA: Función para cerrar solo el bottom sheet sin afectar el carrusel
+  const closeBottomSheetOnly = () => {
+    if (showBottomSheet) {
+      closeBottomSheet()
+    }
+  }
+
   const handleSearch = async () => {
     if (!searchText || !searchText.trim()) {
-      resetMap()
+      resetMapForNewSearch()
       return
     }
 
@@ -262,14 +428,12 @@ export default function MainScreen() {
 
     const results = await searchPlaces(searchText, location)
 
-    if (showBottomSheet) {
-      closeBottomSheet()
-    }
+    closeBottomSheetOnly()
 
     setPlaces(results)
     const sortedPlaces = sortPlacesByDistance(results, location)
     setNearbyPlacesList(sortedPlaces)
-    setIsCardScrollable(true) // Búsqueda normal permite scroll
+    setIsCardScrollable(true)
 
     if (sortedPlaces.length > 0) {
       setCurrentIndex(0)
@@ -297,11 +461,8 @@ export default function MainScreen() {
   const handleSelectPlace = (place: Place) => {
     markerPressRef.current = true
 
-    if (showBottomSheet) {
-      closeBottomSheet()
-    }
+    closeBottomSheetOnly()
 
-    // Si hay múltiples lugares, mostrar el carrusel normal
     if (places.length > 1) {
       const sortedPlaces = sortPlacesByDistance(places, location)
       const index = sortedPlaces.findIndex(
@@ -315,15 +476,14 @@ export default function MainScreen() {
         setCurrentIndex(index)
         setSelectedPlace(place)
         centerMapOnPlace(place)
-        setIsCardScrollable(true) // Permitir scroll para múltiples lugares
+        setIsCardScrollable(true)
       }
     } else {
-      // Si solo hay un lugar (desde predicción), mostrar solo ese lugar sin scroll
       setNearbyPlacesList([place])
       setCurrentIndex(0)
       setSelectedPlace(place)
       centerMapOnPlace(place)
-      setIsCardScrollable(false) // No permitir scroll para un solo lugar
+      setIsCardScrollable(false)
     }
   }
 
@@ -335,12 +495,11 @@ export default function MainScreen() {
     const place = await getPlaceDetails(prediction.place_id)
 
     if (place) {
-      // Para predicciones, solo mostrar ese lugar específico
       setPlaces([place])
       setNearbyPlacesList([place])
       setCurrentIndex(0)
       setSelectedPlace(place)
-      setIsCardScrollable(false) // No permitir scroll para predicciones
+      setIsCardScrollable(false)
 
       centerMapOnPlace(place)
     }
@@ -363,20 +522,17 @@ export default function MainScreen() {
   }
 
   const handleScrollBegin = () => {
-    if (!isCardScrollable) return // No permitir scroll si no es scrollable
+    if (!isCardScrollable) return
     isScrollingRef.current = true
   }
 
-  // Manejador de scroll mejorado para evitar la "corrección" posterior
   const handleScrollEnd = (event: any) => {
     if (nearbyPlacesList.length <= 1 || !isCardScrollable) return
 
     const offsetX = event.nativeEvent.contentOffset.x
-    // Calculamos el índice teniendo en cuenta el padding lateral
     const index = Math.round(offsetX / TOTAL_ITEM_WIDTH)
 
     if (index !== currentIndex && index >= 0 && index < nearbyPlacesList.length) {
-      // Actualizamos el estado sin animación adicional
       setCurrentIndex(index)
       const newPlace = nearbyPlacesList[index]
       setSelectedPlace(newPlace)
@@ -386,7 +542,7 @@ export default function MainScreen() {
     isScrollingRef.current = false
   }
 
-  // Renderizar el carrusel con padding lateral para centrado perfecto
+  // MEJORA: Renderizar el carrusel con mejor control de posicionamiento
   const renderCarousel = () => {
     if (!selectedPlace || isKeyboardVisible || showBottomSheet || nearbyPlacesList.length === 0) {
       return null
@@ -469,7 +625,7 @@ export default function MainScreen() {
           contentContainerStyle={{
             paddingHorizontal: SIDE_SPACING,
           }}
-          scrollEnabled={isCardScrollable} // Controlar si se puede hacer scroll o no
+          scrollEnabled={isCardScrollable}
           onScrollBeginDrag={handleScrollBegin}
           onMomentumScrollEnd={handleScrollEnd}
           onScrollToIndexFailed={(info) => {
@@ -479,6 +635,12 @@ export default function MainScreen() {
                 scrollToIndex(info.index, false)
               }
             })
+          }}
+          // MEJORA: Asegurar que el carrusel mantenga su posición inicial
+          initialScrollIndex={currentIndex}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+            autoscrollToTopThreshold: 10,
           }}
         />
       </View>
@@ -505,12 +667,9 @@ export default function MainScreen() {
           onPress={() => {
             Keyboard.dismiss()
             setPredictions([])
-            // Si el bottomSheet está visible, solo cerrarlo sin ocultar las cards
             if (showBottomSheet) {
-              closeBottomSheet()
-            }
-            // Si no hay bottomSheet pero hay cards visibles, ocultarlas
-            else if (selectedPlace) {
+              closeBottomSheetOnly()
+            } else if (selectedPlace) {
               hideCards()
             }
           }}
@@ -535,10 +694,8 @@ export default function MainScreen() {
                   markerPressRef.current = false
                 } else {
                   if (showBottomSheet) {
-                    // Solo cerrar el bottomSheet sin ocultar las cards
-                    closeBottomSheet()
+                    closeBottomSheetOnly()
                   } else {
-                    // Ocultar las cards cuando se toca el mapa (solo si no hay bottomSheet)
                     hideCards()
                   }
                 }
@@ -580,7 +737,7 @@ export default function MainScreen() {
                     onChangeText={(text) => {
                       setSearchText(text)
                       if (!text || text.trim() === "") {
-                        resetMap()
+                        resetMapForNewSearch()
                         setPredictions([])
                       } else {
                         handleAutocomplete(text)
@@ -615,59 +772,67 @@ export default function MainScreen() {
 
             {renderCarousel()}
 
-            {/* Bottom Sheet */}
+            {/* MEJORA: Bottom Sheet con protección contra crashes */}
             {showBottomSheet && (
-              <Animated.View
-                style={[
-                  styles.bottomSheet,
-                  {
-                    transform: [{ translateY: bottomSheetPosition }],
-                    height: bottomSheetHeight,
-                  },
-                ]}
-                {...panResponder.panHandlers}
-              >
-                <View style={styles.bottomSheetHandle} />
-                <View style={styles.bottomSheetContent}>
-                  {selectedPlace && (
-                    <>
-                      <View style={styles.bottomSheetHeader}>
-                        <Text style={styles.bottomSheetTitle}>{selectedPlace.name}</Text>
-                        <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(selectedPlace)}>
-                          <FontAwesome
-                            name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
-                            size={24}
-                            color="#ff9500"
-                          />
-                        </TouchableOpacity>
-                      </View>
-                      <Text style={styles.bottomSheetRating}>
-                        ⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)
-                      </Text>
-                      {location && (
-                        <Text style={styles.bottomSheetDistance}>
-                          🚶{" "}
-                          {calculateDistance(
-                            location.latitude,
-                            location.longitude,
-                            selectedPlace.geometry.location.lat,
-                            selectedPlace.geometry.location.lng,
-                          ).toFixed(1)}{" "}
-                          km
+              <PanGestureHandler onGestureEvent={gestureHandler}>
+                <Animated.View
+                  style={[
+                    styles.bottomSheet,
+                    bottomSheetStyle,
+                    {
+                      height: bottomSheetHeight,
+                    },
+                  ]}
+                >
+                  <View style={styles.bottomSheetHandle} />
+                  <View style={[styles.bottomSheetContent, { paddingTop: safeAreaTop + 20 }]}>
+                    {selectedPlace && (
+                      <>
+                        <View style={styles.bottomSheetHeader}>
+                          <Text style={styles.bottomSheetTitle}>{selectedPlace.name}</Text>
+                          <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(selectedPlace)}>
+                            <FontAwesome
+                              name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
+                              size={24}
+                              color="#ff9500"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                        <Text style={styles.bottomSheetRating}>
+                          ⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)
                         </Text>
-                      )}
-                      <View style={styles.bottomSheetBadges}>
-                        <Text style={styles.badge}>Celiaco</Text>
-                        <Text style={styles.badge}>Vegetariano</Text>
-                      </View>
+                        {location && (
+                          <Text style={styles.bottomSheetDistance}>
+                            🚶{" "}
+                            {calculateDistance(
+                              location.latitude,
+                              location.longitude,
+                              selectedPlace.geometry.location.lat,
+                              selectedPlace.geometry.location.lng,
+                            ).toFixed(1)}{" "}
+                            km
+                          </Text>
+                        )}
+                        <View style={styles.bottomSheetBadges}>
+                          <Text style={styles.badge}>Celiaco</Text>
+                          <Text style={styles.badge}>Vegetariano</Text>
+                        </View>
 
-                      <Text style={styles.bottomSheetDescription}>
-                        Desliza hacia arriba para ver más información o hacia abajo para cerrar.
-                      </Text>
-                    </>
-                  )}
-                </View>
-              </Animated.View>
+                        <Text style={styles.bottomSheetDescription}>
+                          Desliza hacia arriba para expandir completamente o hacia abajo para cerrar.
+                        </Text>
+
+                        <View style={{ marginTop: 20 }}>
+                          <Text style={styles.bottomSheetSectionTitle}>Información</Text>
+                          <Text style={styles.bottomSheetText}>
+                            asdasd
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+                </Animated.View>
+              </PanGestureHandler>
             )}
           </View>
         </TouchableWithoutFeedback>
