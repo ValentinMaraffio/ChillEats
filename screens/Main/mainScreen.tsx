@@ -91,7 +91,7 @@ export default function MainScreen() {
 
   // Obtener la altura de la barra de estado
   const statusBarHeight = StatusBar.currentHeight || 0
-  const safeAreaTop = Platform.OS === 'ios' ? 44 : statusBarHeight // iOS tiene notch/dynamic island
+  const safeAreaTop = Platform.OS === "ios" ? 44 : statusBarHeight // iOS tiene notch/dynamic island
 
   // MEJORA: Snap points con límites más seguros - respetar área segura
   const snapPoints = {
@@ -335,10 +335,14 @@ export default function MainScreen() {
     }
   }, [nearbyPlacesList.length, scrollToIndex, showBottomSheet])
 
+  const [isLoadingLocation, setIsLoadingLocation] = useState(true)
+
   useEffect(() => {
     ;(async () => {
+      setIsLoadingLocation(true)
       const coords = await getCurrentLocation()
       setLocation(coords)
+      setIsLoadingLocation(false)
     })()
   }, [])
 
@@ -647,7 +651,7 @@ export default function MainScreen() {
     )
   }
 
-  if (!location) {
+  if (isLoadingLocation) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#ff9500" />
@@ -675,44 +679,50 @@ export default function MainScreen() {
           }}
         >
           <View style={{ flex: 1 }}>
-            <MapView
-              ref={mapRef}
-              provider={PROVIDER_GOOGLE}
-              style={StyleSheet.absoluteFill}
-              showsUserLocation={true}
-              showsMyLocationButton={false}
-              showsCompass={false}
-              initialRegion={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-              mapPadding={{ top: 0, right: 0, bottom: 160, left: 0 }}
-              onPress={() => {
-                if (markerPressRef.current) {
-                  markerPressRef.current = false
-                } else {
-                  if (showBottomSheet) {
-                    closeBottomSheetOnly()
-                  } else {
-                    hideCards()
-                  }
+            {location && (
+              <MapView
+                ref={mapRef}
+                provider={PROVIDER_GOOGLE}
+                style={StyleSheet.absoluteFill}
+                showsUserLocation={true}
+                showsMyLocationButton={false}
+                showsCompass={false}
+                initialRegion={
+                  location
+                    ? {
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01,
+                      }
+                    : undefined
                 }
-              }}
-            >
-              {places.map((place) => (
-                <Marker
-                  key={uuidv4()}
-                  coordinate={{
-                    latitude: place.geometry.location.lat,
-                    longitude: place.geometry.location.lng,
-                  }}
-                  title={place.name}
-                  onPress={() => handleSelectPlace(place)}
-                />
-              ))}
-            </MapView>
+                mapPadding={{ top: 0, right: 0, bottom: 160, left: 0 }}
+                onPress={() => {
+                  if (markerPressRef.current) {
+                    markerPressRef.current = false
+                  } else {
+                    if (showBottomSheet) {
+                      closeBottomSheetOnly()
+                    } else {
+                      hideCards()
+                    }
+                  }
+                }}
+              >
+                {places.map((place) => (
+                  <Marker
+                    key={uuidv4()}
+                    coordinate={{
+                      latitude: place.geometry.location.lat,
+                      longitude: place.geometry.location.lng,
+                    }}
+                    title={place.name}
+                    onPress={() => handleSelectPlace(place)}
+                  />
+                ))}
+              </MapView>
+            )}
 
             {!isKeyboardVisible && !selectedPlace && (
               <View style={styles.floatingButtons}>
@@ -824,9 +834,7 @@ export default function MainScreen() {
 
                         <View style={{ marginTop: 20 }}>
                           <Text style={styles.bottomSheetSectionTitle}>Información</Text>
-                          <Text style={styles.bottomSheetText}>
-                            asdasd
-                          </Text>
+                          <Text style={styles.bottomSheetText}>asdasd</Text>
                         </View>
                       </>
                     )}

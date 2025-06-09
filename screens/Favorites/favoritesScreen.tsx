@@ -4,7 +4,6 @@ import { StatusBar } from "expo-status-bar"
 import { Text, View, ImageBackground, SafeAreaView, TouchableOpacity, ScrollView, Alert } from "react-native"
 import { FontAwesome } from "@expo/vector-icons"
 import { useNavigation } from "@react-navigation/native"
-import { widthPercentageToDP as wp } from "react-native-responsive-screen"
 import { useAuth } from "../../context/authContext"
 import type { NavigationProp } from "./favoritesBackend"
 import { styles, tagStyle } from "./favoritesStyles"
@@ -13,7 +12,7 @@ import { calculateDistance } from "../Main/mainBackend"
 import * as Location from "expo-location"
 import { useEffect, useState } from "react"
 import BottomNavBar from "../../components/bottomNavBar"
-import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
 
 const Tag = ({ label }: { label: string }) => (
   <View style={tagStyle.container}>
@@ -85,30 +84,7 @@ export default function FavoritesScreen() {
             <Text style={styles.emptySubtext}>Agrega lugares a tus favoritos desde el mapa para verlos aquí</Text>
           </View>
 
-          <View style={styles.bottomNav}>
-            <TouchableOpacity onPress={() => navigation.navigate("Main")}>
-              <FontAwesome name="home" size={wp("7%")} color="white" />
-            </TouchableOpacity>
-
-            <TouchableOpacity>
-              <FontAwesome name="heart" size={wp("7%")} color="white" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {
-                if (user) {
-                  navigation.navigate("Profile", {
-                    username: user.username,
-                    email: user.email,
-                  })
-                } else {
-                  navigation.navigate("Login")
-                }
-              }}
-            >
-              <FontAwesome name="user" size={wp("7%")} color="white" />
-            </TouchableOpacity>
-          </View>
+          {!isKeyboardVisible && <BottomNavBar />}
         </ImageBackground>
         <StatusBar style="light" />
       </SafeAreaView>
@@ -166,7 +142,6 @@ export default function FavoritesScreen() {
         </ScrollView>
 
         {!isKeyboardVisible && <BottomNavBar />}
-      
       </ImageBackground>
       <StatusBar style="light" />
     </SafeAreaView>
