@@ -19,6 +19,8 @@ import {
   Alert,
   Animated as RNAnimated,
   StatusBar,
+  Share,
+  Image,
 } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
 import type * as Location from "expo-location"
@@ -34,6 +36,7 @@ import {
   sortPlacesByDistance,
   calculateDistance,
   type Place,
+  getPhotoUrl,
 } from "./mainBackend"
 import { useFavorites } from "../../context/favoritesContext"
 import BottomNavBar from "../../components/bottomNavBar"
@@ -48,10 +51,23 @@ import Animated, {
   clamp,
 } from "react-native-reanimated"
 import { PanGestureHandler } from "react-native-gesture-handler"
+import ImageViewer from "../../components/imageViewer"
 
 const { width, height } = Dimensions.get("window")
 
 export default function MainScreen() {
+  // Estado para el visor de imágenes
+  const [showImageViewer, setShowImageViewer] = useState(false)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [viewerPhotos, setViewerPhotos] = useState<
+    Array<{
+      photo_reference: string
+      height: number
+      width: number
+    }>
+  >([])
+
+  // Resto del código existente...
   const scrollX = useRef(new RNAnimated.Value(0)).current
   const flatListRef = useRef<FlatList>(null)
   const isKeyboardVisible = useKeyboardVisibility()
@@ -67,6 +83,12 @@ export default function MainScreen() {
   const mapRef = useRef<MapView>(null)
   const markerPressRef = useRef(false)
   const isScrollingRef = useRef(false)
+
+  // Estado para indicar que se están cargando detalles
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+
+  // Estado para las pestañas del bottom sheet
+  const [activeTab, setActiveTab] = useState<"info" | "reviews">("info")
 
   // Nuevo estado para controlar si la card es deslizable o no
   const [isCardScrollable, setIsCardScrollable] = useState(true)
@@ -240,6 +262,7 @@ export default function MainScreen() {
   const showAndExpandBottomSheet = () => {
     try {
       setShowBottomSheet(true)
+      setActiveTab("info") // Reset a la pestaña de información
       translateY.value = snapPoints.closed
 
       // Animación de entrada más segura
@@ -283,6 +306,27 @@ export default function MainScreen() {
         }
       },
     )
+  }
+
+  // Función para compartir
+  const handleShare = async () => {
+    if (!selectedPlace) return
+
+    try {
+      await Share.share({
+        message: `¡Mira este lugar que encontré! ${selectedPlace.name} - Rating: ${selectedPlace.rating}⭐`,
+        title: selectedPlace.name,
+      })
+    } catch (error) {
+      console.error("Error al compartir:", error)
+    }
+  }
+
+  // Función para abrir direcciones
+  const handleDirections = () => {
+    if (!selectedPlace) return
+    // Aquí puedes implementar la navegación con Google Maps o Apple Maps
+    Alert.alert("Direcciones", `Abriendo direcciones para ${selectedPlace.name}`)
   }
 
   // MEJORA: Función unificada para centrar el carrusel con mejor control
@@ -393,6 +437,7 @@ export default function MainScreen() {
     setShowBottomSheet(false)
     setCurrentIndex(0)
     setIsCardScrollable(true)
+    setActiveTab("info")
     needsRepositioning.current = false // Reset del flag
 
     // Reset seguro del bottom sheet
@@ -413,6 +458,28 @@ export default function MainScreen() {
     if (showBottomSheet) {
       closeBottomSheet()
     }
+  }
+
+  // Nueva función para obtener detalles completos de un lugar
+  const fetchFullPlaceDetails = async (place: Place): Promise<Place> => {
+    if (!place.place_id || (place.photos && place.photos.length >= 3)) {
+      return place // Ya tiene detalles completos o no tiene place_id
+    }
+
+    try {
+      setIsLoadingDetails(true)
+      const fullDetails = await getPlaceDetails(place.place_id)
+      setIsLoadingDetails(false)
+
+      if (fullDetails) {
+        return fullDetails
+      }
+    } catch (error) {
+      console.error("Error fetching place details:", error)
+      setIsLoadingDetails(false)
+    }
+
+    return place // Devuelve el lugar original si hay error
   }
 
   const handleSearch = async () => {
@@ -441,8 +508,19 @@ export default function MainScreen() {
 
     if (sortedPlaces.length > 0) {
       setCurrentIndex(0)
-      setSelectedPlace(sortedPlaces[0])
-      centerMapOnPlace(sortedPlaces[0])
+
+      // Obtener detalles completos del primer lugar
+      const detailedPlace = await fetchFullPlaceDetails(sortedPlaces[0])
+      setSelectedPlace(detailedPlace)
+
+      // Actualizar la lista con el lugar detallado
+      if (detailedPlace !== sortedPlaces[0]) {
+        const updatedPlaces = [...sortedPlaces]
+        updatedPlaces[0] = detailedPlace
+        setNearbyPlacesList(updatedPlaces)
+      }
+
+      centerMapOnPlace(detailedPlace)
 
       setTimeout(() => {
         scrollToIndex(0, false)
@@ -462,10 +540,13 @@ export default function MainScreen() {
     setPredictions(predictions)
   }
 
-  const handleSelectPlace = (place: Place) => {
+  // Función modificada para obtener detalles completos al seleccionar un lugar
+  const handleSelectPlace = async (place: Place) => {
     markerPressRef.current = true
-
     closeBottomSheetOnly()
+
+    // Obtener detalles completos del lugar
+    const detailedPlace = await fetchFullPlaceDetails(place)
 
     if (places.length > 1) {
       const sortedPlaces = sortPlacesByDistance(places, location)
@@ -476,17 +557,21 @@ export default function MainScreen() {
       )
 
       if (index >= 0) {
-        setNearbyPlacesList(sortedPlaces)
+        // Reemplazar el lugar en la lista con la versión detallada
+        const updatedPlaces = [...sortedPlaces]
+        updatedPlaces[index] = detailedPlace
+
+        setNearbyPlacesList(updatedPlaces)
         setCurrentIndex(index)
-        setSelectedPlace(place)
-        centerMapOnPlace(place)
+        setSelectedPlace(detailedPlace)
+        centerMapOnPlace(detailedPlace)
         setIsCardScrollable(true)
       }
     } else {
-      setNearbyPlacesList([place])
+      setNearbyPlacesList([detailedPlace])
       setCurrentIndex(0)
-      setSelectedPlace(place)
-      centerMapOnPlace(place)
+      setSelectedPlace(detailedPlace)
+      centerMapOnPlace(detailedPlace)
       setIsCardScrollable(false)
     }
   }
@@ -530,7 +615,8 @@ export default function MainScreen() {
     isScrollingRef.current = true
   }
 
-  const handleScrollEnd = (event: any) => {
+  // Obtener info completa al cambiar de lugar en el carrusel
+  const handleScrollEnd = async (event: any) => {
     if (nearbyPlacesList.length <= 1 || !isCardScrollable) return
 
     const offsetX = event.nativeEvent.contentOffset.x
@@ -539,11 +625,34 @@ export default function MainScreen() {
     if (index !== currentIndex && index >= 0 && index < nearbyPlacesList.length) {
       setCurrentIndex(index)
       const newPlace = nearbyPlacesList[index]
-      setSelectedPlace(newPlace)
-      centerMapOnPlace(newPlace)
+
+      // Obtener info completa del lugar seleccionado
+      const detailedPlace = await fetchFullPlaceDetails(newPlace)
+
+      // Si hay info nueva, actualizar la lista
+      if (detailedPlace !== newPlace) {
+        const updatedPlaces = [...nearbyPlacesList]
+        updatedPlaces[index] = detailedPlace
+        setNearbyPlacesList(updatedPlaces)
+      }
+
+      setSelectedPlace(detailedPlace)
+      centerMapOnPlace(detailedPlace)
     }
 
     isScrollingRef.current = false
+  }
+
+  // Función modificada para manejar la apertura del visor de imágenes
+  const handleOpenImageViewer = (index: number) => {
+    if (selectedPlace?.photos && selectedPlace.photos.length > 0) {
+      // Guardar las fotos en el estado para que el visor las use
+      setViewerPhotos(selectedPlace.photos)
+      setSelectedImageIndex(index)
+
+      // Mostrar el visor de imágenes
+      setShowImageViewer(true)
+    }
   }
 
   // MEJORA: Renderizar el carrusel con mejor control de posicionamiento
@@ -596,25 +705,79 @@ export default function MainScreen() {
                     },
                   ]}
                 >
-                  <Text style={styles.placeName}>{item.name}</Text>
-                  <Text style={styles.placeRating}>
-                    ⭐ {item.rating} ({item.user_ratings_total} reseñas)
-                  </Text>
-                  {location && (
-                    <Text style={styles.placeDistance}>
-                      🚶{" "}
-                      {calculateDistance(
-                        location.latitude,
-                        location.longitude,
-                        item.geometry.location.lat,
-                        item.geometry.location.lng,
-                      ).toFixed(1)}{" "}
-                      km
-                    </Text>
-                  )}
-                  <View style={styles.badges}>
-                    <Text style={styles.badge}>Celiaco</Text>
-                    <Text style={styles.badge}>Vegetariano</Text>
+                  {/* Sección de imágenes */}
+                  <View style={styles.cardImageSection}>
+                    {/* Imagen principal */}
+                    <View style={styles.cardMainImageContainer}>
+                      {item.photos && item.photos.length > 0 ? (
+                        <Image
+                          source={{ uri: getPhotoUrl(item.photos[0].photo_reference, 400) }}
+                          style={{ width: "100%", height: "100%" }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.cardImagePlaceholder}>Foto Principal</Text>
+                      )}
+                    </View>
+
+                    {/* Imágenes laterales */}
+                    <View style={styles.cardSideImagesContainer}>
+                      {/* Imagen 2 */}
+                      <View style={styles.cardSideImageContainer}>
+                        {item.photos && item.photos.length > 1 ? (
+                          <Image
+                            source={{ uri: getPhotoUrl(item.photos[1].photo_reference, 200) }}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text style={styles.cardImagePlaceholder}>Foto 2</Text>
+                        )}
+                      </View>
+
+                      {/* Imagen 3 */}
+                      <View style={styles.cardSideImageContainer}>
+                        {item.photos && item.photos.length > 2 ? (
+                          <Image
+                            source={{ uri: getPhotoUrl(item.photos[2].photo_reference, 200) }}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text style={styles.cardImagePlaceholder}>Foto 3</Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Sección de información */}
+                  <View style={styles.cardInfoSection}>
+                    {/* Izquierda: nombre y etiquetas */}
+                    <View style={styles.cardLeftInfo}>
+                      <Text style={styles.placeName}>{item.name}</Text>
+                      <View style={styles.badges}>
+                        <Text style={styles.badge}>Celiaco</Text>
+                        <Text style={styles.badge}>Vegetariano</Text>
+                        <Text style={styles.badge}>Vegano</Text>
+                      </View>
+                    </View>
+
+                    {/* Derecha: calificación y distancia */}
+                    <View style={styles.cardRightInfo}>
+                      <Text style={styles.placeRating}>⭐ {item.rating}</Text>
+                      {location && (
+                        <Text style={styles.placeDistance}>
+                          🚶{" "}
+                          {calculateDistance(
+                            location.latitude,
+                            location.longitude,
+                            item.geometry.location.lat,
+                            item.geometry.location.lng,
+                          ).toFixed(1)}{" "}
+                          km
+                        </Text>
+                      )}
+                    </View>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -697,7 +860,7 @@ export default function MainScreen() {
                       }
                     : undefined
                 }
-                mapPadding={{ top: 0, right: 0, bottom: 160, left: 0 }}
+                mapPadding={{ top: 0, right: 0, bottom: height * 0.45, left: 0 }} // Ajustado para dar más espacio a las tarjetas
                 onPress={() => {
                   if (markerPressRef.current) {
                     markerPressRef.current = false
@@ -782,7 +945,7 @@ export default function MainScreen() {
 
             {renderCarousel()}
 
-            {/* MEJORA: Bottom Sheet con protección contra crashes */}
+            {/* Bottom Sheet nuevo */}
             {showBottomSheet && (
               <PanGestureHandler onGestureEvent={gestureHandler}>
                 <Animated.View
@@ -795,52 +958,244 @@ export default function MainScreen() {
                   ]}
                 >
                   <View style={styles.bottomSheetHandle} />
-                  <View style={[styles.bottomSheetContent, { paddingTop: safeAreaTop + 20 }]}>
-                    {selectedPlace && (
+                  <View style={[styles.bottomSheetContent, { paddingTop: 10 }]}>
+                    {isLoadingDetails ? (
+                      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                        <ActivityIndicator size="large" color="#ff9500" />
+                        <Text style={{ marginTop: 10 }}>Cargando detalles...</Text>
+                      </View>
+                    ) : selectedPlace ? (
                       <>
-                        <View style={styles.bottomSheetHeader}>
-                          <Text style={styles.bottomSheetTitle}>{selectedPlace.name}</Text>
-                          <TouchableOpacity style={styles.favoriteButton} onPress={() => toggleFavorite(selectedPlace)}>
-                            <FontAwesome
-                              name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
-                              size={24}
-                              color="#ff9500"
-                            />
+                        {/* Sección de imágenes */}
+                        <View style={[styles.imageSection, { marginTop: 15 }]}>
+                          {/* Imagen principal */}
+                          <TouchableOpacity
+                            style={styles.mainImageContainer}
+                            onPress={() => handleOpenImageViewer(0)}
+                            activeOpacity={0.8}
+                          >
+                            {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
+                              <Image
+                                source={{ uri: getPhotoUrl(selectedPlace.photos[0].photo_reference, 800) }}
+                                style={{ width: "100%", height: "100%", borderRadius: 12 }}
+                                resizeMode="cover"
+                              />
+                            ) : (
+                              <Text style={styles.imagePlaceholder}>Foto Principal</Text>
+                            )}
+                          </TouchableOpacity>
+
+                          {/* Imágenes laterales */}
+                          <View style={styles.sideImagesContainer}>
+                            {/* Imagen 2 */}
+                            <TouchableOpacity
+                              style={styles.sideImageContainer}
+                              onPress={() => {
+                                if (selectedPlace.photos && selectedPlace.photos.length > 1) {
+                                  handleOpenImageViewer(1)
+                                }
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              {selectedPlace.photos && selectedPlace.photos.length > 1 ? (
+                                <Image
+                                  source={{ uri: getPhotoUrl(selectedPlace.photos[1].photo_reference, 400) }}
+                                  style={{ width: "100%", height: "100%", borderRadius: 12 }}
+                                  resizeMode="cover"
+                                />
+                              ) : (
+                                <Text style={styles.sideImagePlaceholder}>Foto 2</Text>
+                              )}
+                            </TouchableOpacity>
+
+                            {/* "Ver todo" en la Foto 3 */}
+                            <TouchableOpacity
+                              style={styles.sideImageContainer}
+                              onPress={() => {
+                                if (selectedPlace.photos && selectedPlace.photos.length > 2) {
+                                  handleOpenImageViewer(2)
+                                }
+                              }}
+                              activeOpacity={0.8}
+                            >
+                              {selectedPlace.photos && selectedPlace.photos.length > 2 ? (
+                                <View style={{ width: "100%", height: "100%" }}>
+                                  <Image
+                                    source={{ uri: getPhotoUrl(selectedPlace.photos[2].photo_reference, 400) }}
+                                    style={{ width: "100%", height: "100%", borderRadius: 12 }}
+                                    resizeMode="cover"
+                                  />
+                                  {selectedPlace.photos && selectedPlace.photos.length > 3 && (
+                                    <View
+                                      style={{
+                                        position: "absolute",
+                                        width: "100%",
+                                        height: "100%",
+                                        backgroundColor: "rgba(0,0,0,0.4)",
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        borderRadius: 12,
+                                      }}
+                                    >
+                                      <Text style={{ color: "white", fontWeight: "bold" }}>Ver todo</Text>
+                                    </View>
+                                  )}
+                                </View>
+                              ) : (
+                                <Text style={styles.sideImagePlaceholder}>Foto 3</Text>
+                              )}
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        {/* Información del lugar */}
+                        <View style={{ marginBottom: 15 }}>
+                          <View
+                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: width * 0.06, fontWeight: "bold" }}>{selectedPlace.name}</Text>
+                            </View>
+                            <View style={{ alignItems: "flex-end" }}>
+                              <Text style={{ fontSize: width * 0.04, color: "#333", fontWeight: "600" }}>
+                                ⭐ {selectedPlace.rating}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "flex-start",
+                              marginTop: 10,
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                                <Text
+                                  style={{
+                                    backgroundColor: "#eee",
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12,
+                                    fontSize: width * 0.038,
+                                  }}
+                                >
+                                  Celiaco
+                                </Text>
+                                <Text
+                                  style={{
+                                    backgroundColor: "#eee",
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12,
+                                    fontSize: width * 0.038,
+                                  }}
+                                >
+                                  Vegetariano
+                                </Text>
+                                <Text
+                                  style={{
+                                    backgroundColor: "#eee",
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12,
+                                    fontSize: width * 0.038,
+                                  }}
+                                >
+                                  Vegano
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={{ alignItems: "flex-end" }}>
+                              {location && (
+                                <Text style={{ fontSize: width * 0.04, color: "#333" }}>
+                                  🚶{" "}
+                                  {calculateDistance(
+                                    location.latitude,
+                                    location.longitude,
+                                    selectedPlace.geometry.location.lat,
+                                    selectedPlace.geometry.location.lng,
+                                  ).toFixed(1)}{" "}
+                                  km
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Pestañas */}
+                        <View style={[styles.tabContainer, { marginBottom: 10 }]}>
+                          <TouchableOpacity
+                            style={[styles.tab, activeTab === "info" && styles.activeTab]}
+                            onPress={() => setActiveTab("info")}
+                          >
+                            <Text style={[styles.tabText, activeTab === "info" && styles.activeTabText]}>
+                              Información
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.tab, activeTab === "reviews" && styles.activeTab]}
+                            onPress={() => setActiveTab("reviews")}
+                          >
+                            <Text style={[styles.tabText, activeTab === "reviews" && styles.activeTabText]}>
+                              Reseñas
+                            </Text>
                           </TouchableOpacity>
                         </View>
-                        <Text style={styles.bottomSheetRating}>
-                          ⭐ {selectedPlace.rating} ({selectedPlace.user_ratings_total} reseñas)
-                        </Text>
-                        {location && (
-                          <Text style={styles.bottomSheetDistance}>
-                            🚶{" "}
-                            {calculateDistance(
-                              location.latitude,
-                              location.longitude,
-                              selectedPlace.geometry.location.lat,
-                              selectedPlace.geometry.location.lng,
-                            ).toFixed(1)}{" "}
-                            km
-                          </Text>
-                        )}
-                        <View style={styles.bottomSheetBadges}>
-                          <Text style={styles.badge}>Celiaco</Text>
-                          <Text style={styles.badge}>Vegetariano</Text>
-                        </View>
 
-                        <Text style={styles.bottomSheetDescription}>
-                          Desliza hacia arriba para expandir completamente o hacia abajo para cerrar.
-                        </Text>
+                        {/* Contenido de las pestañas */}
+                        <View style={[styles.tabContent, { paddingTop: 5 }]}>
+                          {activeTab === "info" ? (
+                            <View style={[styles.infoTabContent, { justifyContent: "flex-start", paddingTop: 20 }]}>
+                              {/* Botones de acción para la pestaña de información */}
+                              <View style={[styles.infoActionButtons, { marginTop: 10 }]}>
+                                <TouchableOpacity
+                                  style={styles.infoActionButton}
+                                  onPress={() => toggleFavorite(selectedPlace)}
+                                >
+                                  <FontAwesome
+                                    name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
+                                    size={20}
+                                    color="#ff9500"
+                                  />
+                                </TouchableOpacity>
 
-                        <View style={{ marginTop: 20 }}>
-                          <Text style={styles.bottomSheetSectionTitle}>Información</Text>
-                          <Text style={styles.bottomSheetText}>asdasd</Text>
+                                <TouchableOpacity style={styles.infoActionButton} onPress={handleDirections}>
+                                  <Ionicons name="navigate" size={20} color="#ff9500" />
+                                </TouchableOpacity>
+
+                                <TouchableOpacity style={styles.infoActionButton} onPress={handleShare}>
+                                  <Ionicons name="share-social" size={20} color="#ff9500" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          ) : (
+                            <View>
+                              <Text style={styles.bottomSheetText}>
+                                Reseñas de {selectedPlace.name}.
+                              </Text>
+                            </View>
+                          )}
                         </View>
                       </>
-                    )}
+                    ) : null}
                   </View>
                 </Animated.View>
               </PanGestureHandler>
+            )}
+
+            {/* Visor de imágenes*/}
+            {showImageViewer && viewerPhotos.length > 0 && (
+              <View style={StyleSheet.absoluteFillObject}>
+                <ImageViewer
+                  photos={viewerPhotos}
+                  visible={showImageViewer}
+                  onClose={() => setShowImageViewer(false)}
+                  initialIndex={selectedImageIndex}
+                />
+              </View>
             )}
           </View>
         </TouchableWithoutFeedback>

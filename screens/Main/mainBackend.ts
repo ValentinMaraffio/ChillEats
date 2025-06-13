@@ -17,6 +17,11 @@ export interface Place {
       lng: number
     }
   }
+  photos?: Array<{
+    photo_reference: string
+    height: number
+    width: number
+  }>
 }
 
 // Helper functions
@@ -28,6 +33,11 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return R * c
+}
+
+// Obtener URL de la foto
+export const getPhotoUrl = (photoReference: string, maxWidth: number): string => {
+  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`
 }
 
 // Location services
@@ -85,6 +95,7 @@ export const getPlaceDetails = async (placeId: string): Promise<Place | null> =>
     const detailResponse = await axios.get(`https://maps.googleapis.com/maps/api/place/details/json`, {
       params: {
         place_id: placeId,
+        fields: "name,rating,user_ratings_total,geometry,photos",
         key: GOOGLE_API_KEY,
       },
     })
@@ -101,6 +112,7 @@ export const getPlaceDetails = async (placeId: string): Promise<Place | null> =>
           lng: result.geometry.location.lng,
         },
       },
+      photos: result.photos || [],
     }
   } catch (error) {
     Alert.alert("Error", "No se pudo obtener la información del lugar")

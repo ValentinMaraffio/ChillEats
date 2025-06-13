@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions, Platform, StatusBar } from "react-native"
+import { StyleSheet, Dimensions } from "react-native"
 
 const { width, height } = Dimensions.get("window")
 
@@ -140,26 +140,68 @@ export const styles = StyleSheet.create({
   },
   carouselContainer: {
     position: "absolute",
-    bottom: height * 0.115,
-    height: height * 0.18,
+    bottom: height * 0.08, 
+    height: height * 0.35, 
     width: "100%",
     alignItems: "center",
   },
   carouselCard: {
     backgroundColor: "white",
     borderRadius: 16,
-    padding: 16,
+    padding: 12,
     elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
+  },
+  cardImageSection: {
+    flexDirection: "row",
+    height: height * 0.15,
+    marginBottom: 10,
+    gap: 8,
+  },
+  cardMainImageContainer: {
+    flex: 2,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
     justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  cardSideImagesContainer: {
+    flex: 1,
+    gap: 8,
+  },
+  cardSideImageContainer: {
+    flex: 1,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  cardImagePlaceholder: {
+    fontSize: width * 0.035,
+    color: "#999",
+    fontWeight: "500",
+  },
+  cardInfoSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  cardLeftInfo: {
+    flex: 1,
+  },
+  cardRightInfo: {
+    alignItems: "flex-end",
   },
   badges: {
     flexDirection: "row",
     marginTop: 8,
     gap: 8,
+    flexWrap: "wrap",
   },
   badge: {
     backgroundColor: "#eee",
@@ -168,7 +210,6 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 12,
   },
-  // Bottom sheet styles mejorados con soporte para área segura
   bottomSheet: {
     position: "absolute",
     left: 0,
@@ -191,12 +232,12 @@ export const styles = StyleSheet.create({
     borderRadius: 3,
     alignSelf: "center",
     marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 0,
   },
   bottomSheetContent: {
-    padding: 20,
+    padding: 15,
+    paddingTop: 0,
     flex: 1,
-    paddingTop: 10, // Reducido ya que el padding superior se maneja en el componente principal
   },
   bottomSheetHeader: {
     flexDirection: "row",
@@ -208,6 +249,7 @@ export const styles = StyleSheet.create({
     fontSize: width * 0.06,
     fontWeight: "bold",
     flex: 1,
+    marginBottom: 15,
   },
   favoriteButton: {
     padding: 8,
@@ -215,17 +257,17 @@ export const styles = StyleSheet.create({
   bottomSheetRating: {
     fontSize: width * 0.04,
     color: "#333",
-    marginBottom: 5,
+    fontWeight: "600",
   },
   bottomSheetDistance: {
     fontSize: width * 0.04,
     color: "#333",
-    marginBottom: 15,
   },
   bottomSheetBadges: {
     flexDirection: "row",
-    marginBottom: 20,
     gap: 10,
+    marginTop: 10,
+    marginBottom: 10,
   },
   bottomSheetDescription: {
     fontSize: width * 0.04,
@@ -233,7 +275,6 @@ export const styles = StyleSheet.create({
     marginTop: 20,
     textAlign: "center",
   },
-  // Nuevos estilos para contenido adicional del bottom sheet
   bottomSheetSectionTitle: {
     fontSize: width * 0.05,
     fontWeight: "600",
@@ -245,5 +286,110 @@ export const styles = StyleSheet.create({
     color: "#666",
     lineHeight: width * 0.06,
     marginBottom: 15,
+  },
+  imageSection: {
+    flexDirection: "row",
+    height: height * 0.25,
+    marginBottom: 15,
+    gap: 10,
+    marginTop: -5,
+  },
+  mainImageContainer: {
+    flex: 2,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imagePlaceholder: {
+    fontSize: width * 0.04,
+    color: "#999",
+    fontWeight: "500",
+  },
+  sideImagesContainer: {
+    flex: 1,
+    gap: 10,
+  },
+  sideImageContainer: {
+    flex: 1,
+    backgroundColor: "#f0f0f0",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sideImagePlaceholder: {
+    fontSize: width * 0.035,
+    color: "#999",
+    fontWeight: "500",
+  },
+  placeInfoSection: {
+    marginBottom: 15,
+  },
+  placeInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  placeInfoLeft: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  placeInfoRight: {
+    alignItems: "flex-end",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#007AFF",
+  },
+  tabText: {
+    fontSize: width * 0.04,
+    color: "#666",
+    fontWeight: "500",
+  },
+  activeTabText: {
+    color: "#007AFF",
+    fontWeight: "600",
+  },
+  tabContent: {
+    flex: 1,
+    paddingTop: 5,
+  },
+  infoTabContent: {
+    flex: 1,
+    justifyContent: "flex-start",
+    alignItems: "center",
+    paddingTop: 20,
+  },
+  infoActionButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "100%",
+    paddingHorizontal: 40,
+    marginTop: 10,
+  },
+  infoActionButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
 })
