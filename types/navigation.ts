@@ -1,13 +1,26 @@
 export type RootStackParamList = {
-  Main: undefined;
-  Login: undefined;
-  Register: undefined;
-  Favorites: undefined;
-  Verification: { email: string };  // Asegúrate de que el tipo de email esté correcto
+  MainTabs: undefined
+  Login: undefined
+  Register: undefined
+  Verification: { email: string }
   Profile: {
-    username: string;
-    email: string;
-  };
-  ForgotPassword: undefined,
-  ResetPassword: {email: string},
-};
+    username: string
+    email: string
+  }
+  ForgotPassword: undefined
+  ResetPassword: { email: string }
+  Welcome: undefined
+}
+
+export type TabParamList = {
+  Home: undefined
+  Favorites: undefined
+  User: undefined
+}
+
+// Tipos de navegación para usar en los componentes
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs"
+
+export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>
+export type TabNavigationProp = BottomTabNavigationProp<TabParamList>

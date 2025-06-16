@@ -10,15 +10,12 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
   FlatList,
   StyleSheet,
   Alert,
   Animated as RNAnimated,
-  StatusBar,
   Share,
   Image,
 } from "react-native"
@@ -39,7 +36,6 @@ import {
   getPhotoUrl,
 } from "./mainBackend"
 import { useFavorites } from "../../context/favoritesContext"
-import BottomNavBar from "../../components/bottomNavBar"
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
 import Animated, {
   useSharedValue,
@@ -52,6 +48,8 @@ import Animated, {
 } from "react-native-reanimated"
 import { PanGestureHandler } from "react-native-gesture-handler"
 import ImageViewer from "../../components/imageViewer"
+import { StatusBar } from 'expo-status-bar';
+
 
 const { width, height } = Dimensions.get("window")
 
@@ -83,6 +81,8 @@ export default function MainScreen() {
   const mapRef = useRef<MapView>(null)
   const markerPressRef = useRef(false)
   const isScrollingRef = useRef(false)
+  const isDraggingMapRef = useRef(false)
+
 
   // Estado para indicar que se están cargando detalles
   const [isLoadingDetails, setIsLoadingDetails] = useState(false)
@@ -111,9 +111,6 @@ export default function MainScreen() {
   // MEJORA: Usando react-native-reanimated con límites más estrictos
   const translateY = useSharedValue(height)
 
-  // Obtener la altura de la barra de estado
-  const statusBarHeight = StatusBar.currentHeight || 0
-  const safeAreaTop = Platform.OS === "ios" ? 44 : statusBarHeight // iOS tiene notch/dynamic island
 
   // MEJORA: Snap points con límites más seguros - respetar área segura
   const snapPoints = {
@@ -825,115 +822,128 @@ export default function MainScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={80}
+      <StatusBar style="light" backgroundColor="#1a1a1a" />
+      <TouchableWithoutFeedback
+        onPress={(event) => {
+          // No cerrar si el usuario presiona en el carrusel
+          const touchY = event.nativeEvent.pageY
+          if (touchY > height * 0.6) return
+
+          Keyboard.dismiss()
+          setPredictions([])
+          if (showBottomSheet) {
+            closeBottomSheetOnly()
+          } else if (selectedPlace) {
+            hideCards()
+          }
+        }}
       >
-        <TouchableWithoutFeedback
-          onPress={() => {
-            Keyboard.dismiss()
-            setPredictions([])
-            if (showBottomSheet) {
-              closeBottomSheetOnly()
-            } else if (selectedPlace) {
-              hideCards()
-            }
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            {location && (
-              <MapView
-                ref={mapRef}
-                provider={PROVIDER_GOOGLE}
-                style={StyleSheet.absoluteFill}
-                showsUserLocation={true}
-                showsMyLocationButton={false}
-                showsCompass={false}
-                initialRegion={
-                  location
-                    ? {
-                        latitude: location.latitude,
-                        longitude: location.longitude,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      }
-                    : undefined
-                }
-                mapPadding={{ top: 0, right: 0, bottom: height * 0.45, left: 0 }} // Ajustado para dar más espacio a las tarjetas
-                onPress={() => {
-                  if (markerPressRef.current) {
-                    markerPressRef.current = false
-                  } else {
-                    if (showBottomSheet) {
-                      closeBottomSheetOnly()
-                    } else {
-                      hideCards()
+        <View style={{ flex: 1 }}>
+          {location && (
+            <MapView
+              onPanDrag={() => {isDraggingMapRef.current = true}}
+              ref={mapRef}
+              provider={PROVIDER_GOOGLE}
+              style={StyleSheet.absoluteFill}
+              showsUserLocation={true}
+              showsMyLocationButton={false}
+              showsCompass={false}
+              initialRegion={
+                location
+                  ? {
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
                     }
+                  : undefined
+              }
+              mapPadding={{
+                top: 0,
+                right: 0,
+                bottom: isKeyboardVisible ? 0 : height * 0.3, // Menos padding y dinámico
+                left: 0,
+              }} // Ajustado para dar más espacio a las tarjetas
+              onPress={() => {
+                if (isDraggingMapRef.current) {
+                  isDraggingMapRef.current = false
+                  return // 👈 No cerrar si se está arrastrando
+                }
+
+                if (markerPressRef.current) {
+                  markerPressRef.current = false
+                } else {
+                  if (showBottomSheet) {
+                    closeBottomSheetOnly()
+                  } else {
+                    hideCards()
                   }
-                }}
-              >
-                {places.map((place) => (
-                  <Marker
-                    key={uuidv4()}
-                    coordinate={{
-                      latitude: place.geometry.location.lat,
-                      longitude: place.geometry.location.lng,
-                    }}
-                    title={place.name}
-                    onPress={() => handleSelectPlace(place)}
-                  />
-                ))}
-              </MapView>
-            )}
+                }
+              }}
 
-            {!isKeyboardVisible && !selectedPlace && (
-              <View style={styles.floatingButtons}>
-                <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
-                  <Ionicons name="locate" size={24} color="#fff" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
-                  <Ionicons name="compass" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            )}
+            >
+              {places.map((place) => (
+                <Marker
+                  key={uuidv4()}
+                  coordinate={{
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
+                  }}
+                  title={place.name}
+                  onPress={() => handleSelectPlace(place)}
+                />
+              ))}
+            </MapView>
+          )}
 
-            <View style={styles.searchContainer}>
-              <View style={styles.searchBlock}>
-                <View style={styles.searchBar}>
-                  <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
-                  <TextInput
-                    placeholder="Buscar..."
-                    placeholderTextColor="gray"
-                    style={styles.searchInput}
-                    value={searchText}
-                    onChangeText={(text) => {
-                      setSearchText(text)
-                      if (!text || text.trim() === "") {
-                        resetMapForNewSearch()
-                        setPredictions([])
-                      } else {
-                        handleAutocomplete(text)
-                      }
-                    }}
-                    onSubmitEditing={handleSearch}
-                  />
-                </View>
+          {!isKeyboardVisible && !selectedPlace && (
+            <View style={styles.floatingButtons}>
+              <TouchableOpacity onPress={centerMapOnUser} style={styles.floatButton}>
+                <Ionicons name="locate" size={24} color="#FF6B35" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={faceNorth} style={styles.floatButton}>
+                <Ionicons name="compass" size={24} color="#FF6B35" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-                {predictions.length > 0 && (
-                  <FlatList
-                    data={predictions}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity style={styles.predictionItem} onPress={() => handleSelectPrediction(item)}>
-                        <Text style={styles.predictionText}>{item.description}</Text>
-                      </TouchableOpacity>
-                    )}
-                    keyExtractor={(item) => item.place_id}
-                    style={styles.predictionList}
-                  />
-                )}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBlock}>
+              <View style={styles.searchBar}>
+                <FontAwesome name="search" size={18} color="gray" style={{ marginLeft: 10 }} />
+                <TextInput
+                  placeholder="Buscar..."
+                  placeholderTextColor="gray"
+                  style={styles.searchInput}
+                  value={searchText}
+                  onChangeText={(text) => {
+                    setSearchText(text)
+                    if (!text || text.trim() === "") {
+                      resetMapForNewSearch()
+                      setPredictions([])
+                    } else {
+                      handleAutocomplete(text)
+                    }
+                  }}
+                  onSubmitEditing={handleSearch}
+                />
               </View>
 
+              {predictions.length > 0 && (
+                <FlatList
+                  data={predictions}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.predictionItem} onPress={() => handleSelectPrediction(item)}>
+                      <Text style={styles.predictionText}>{item.description}</Text>
+                    </TouchableOpacity>
+                  )}
+                  keyExtractor={(item) => item.place_id}
+                  style={styles.predictionList}
+                />
+              )}
+            </View>
+
+            {!isKeyboardVisible && (
               <View style={styles.filters}>
                 {["Localidad", "Limitación", "Precio", "Local"].map((filter) => (
                   <TouchableOpacity key={uuidv4()} style={styles.filterButton}>
@@ -941,267 +951,261 @@ export default function MainScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-            </View>
+            )}
+          </View>
 
-            {renderCarousel()}
+          {renderCarousel()}
 
-            {/* Bottom Sheet nuevo */}
-            {showBottomSheet && (
-              <PanGestureHandler onGestureEvent={gestureHandler}>
-                <Animated.View
-                  style={[
-                    styles.bottomSheet,
-                    bottomSheetStyle,
-                    {
-                      height: bottomSheetHeight,
-                    },
-                  ]}
-                >
-                  <View style={styles.bottomSheetHandle} />
-                  <View style={[styles.bottomSheetContent, { paddingTop: 10 }]}>
-                    {isLoadingDetails ? (
-                      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                        <ActivityIndicator size="large" color="#ff9500" />
-                        <Text style={{ marginTop: 10 }}>Cargando detalles...</Text>
-                      </View>
-                    ) : selectedPlace ? (
-                      <>
-                        {/* Sección de imágenes */}
-                        <View style={[styles.imageSection, { marginTop: 15 }]}>
-                          {/* Imagen principal */}
+          {/* Bottom Sheet nuevo */}
+          {showBottomSheet && (
+            <PanGestureHandler onGestureEvent={gestureHandler}>
+              <Animated.View
+                style={[
+                  styles.bottomSheet,
+                  bottomSheetStyle,
+                  {
+                    height: bottomSheetHeight,
+                  },
+                ]}
+              >
+                <View style={styles.bottomSheetHandle} />
+                <View style={[styles.bottomSheetContent, { paddingTop: 10 }]}>
+                  {isLoadingDetails ? (
+                    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+                      <ActivityIndicator size="large" color="#ff9500" />
+                      <Text style={{ marginTop: 10 }}>Cargando detalles...</Text>
+                    </View>
+                  ) : selectedPlace ? (
+                    <>
+                      {/* Sección de imágenes */}
+                      <View style={[styles.imageSection, { marginTop: 15 }]}>
+                        {/* Imagen principal */}
+                        <TouchableOpacity
+                          style={styles.mainImageContainer}
+                          onPress={() => handleOpenImageViewer(0)}
+                          activeOpacity={0.8}
+                        >
+                          {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
+                            <Image
+                              source={{ uri: getPhotoUrl(selectedPlace.photos[0].photo_reference, 800) }}
+                              style={{ width: "100%", height: "100%", borderRadius: 12 }}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <Text style={styles.imagePlaceholder}>Foto Principal</Text>
+                          )}
+                        </TouchableOpacity>
+
+                        {/* Imágenes laterales */}
+                        <View style={styles.sideImagesContainer}>
+                          {/* Imagen 2 */}
                           <TouchableOpacity
-                            style={styles.mainImageContainer}
-                            onPress={() => handleOpenImageViewer(0)}
+                            style={styles.sideImageContainer}
+                            onPress={() => {
+                              if (selectedPlace.photos && selectedPlace.photos.length > 1) {
+                                handleOpenImageViewer(1)
+                              }
+                            }}
                             activeOpacity={0.8}
                           >
-                            {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
+                            {selectedPlace.photos && selectedPlace.photos.length > 1 ? (
                               <Image
-                                source={{ uri: getPhotoUrl(selectedPlace.photos[0].photo_reference, 800) }}
+                                source={{ uri: getPhotoUrl(selectedPlace.photos[1].photo_reference, 400) }}
                                 style={{ width: "100%", height: "100%", borderRadius: 12 }}
                                 resizeMode="cover"
                               />
                             ) : (
-                              <Text style={styles.imagePlaceholder}>Foto Principal</Text>
+                              <Text style={styles.sideImagePlaceholder}>Foto 2</Text>
                             )}
                           </TouchableOpacity>
 
-                          {/* Imágenes laterales */}
-                          <View style={styles.sideImagesContainer}>
-                            {/* Imagen 2 */}
-                            <TouchableOpacity
-                              style={styles.sideImageContainer}
-                              onPress={() => {
-                                if (selectedPlace.photos && selectedPlace.photos.length > 1) {
-                                  handleOpenImageViewer(1)
-                                }
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              {selectedPlace.photos && selectedPlace.photos.length > 1 ? (
+                          {/* "Ver todo" en la Foto 3 */}
+                          <TouchableOpacity
+                            style={styles.sideImageContainer}
+                            onPress={() => {
+                              if (selectedPlace.photos && selectedPlace.photos.length > 2) {
+                                handleOpenImageViewer(2)
+                              }
+                            }}
+                            activeOpacity={0.8}
+                          >
+                            {selectedPlace.photos && selectedPlace.photos.length > 2 ? (
+                              <View style={{ width: "100%", height: "100%" }}>
                                 <Image
-                                  source={{ uri: getPhotoUrl(selectedPlace.photos[1].photo_reference, 400) }}
+                                  source={{ uri: getPhotoUrl(selectedPlace.photos[2].photo_reference, 400) }}
                                   style={{ width: "100%", height: "100%", borderRadius: 12 }}
                                   resizeMode="cover"
                                 />
-                              ) : (
-                                <Text style={styles.sideImagePlaceholder}>Foto 2</Text>
-                              )}
-                            </TouchableOpacity>
+                                {selectedPlace.photos && selectedPlace.photos.length > 3 && (
+                                  <View
+                                    style={{
+                                      position: "absolute",
+                                      width: "100%",
+                                      height: "100%",
+                                      backgroundColor: "rgba(0,0,0,0.4)",
+                                      justifyContent: "center",
+                                      alignItems: "center",
+                                      borderRadius: 12,
+                                    }}
+                                  >
+                                    <Text style={{ color: "white", fontWeight: "bold" }}>Ver todo</Text>
+                                  </View>
+                                )}
+                              </View>
+                            ) : (
+                              <Text style={styles.sideImagePlaceholder}>Foto 3</Text>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
 
-                            {/* "Ver todo" en la Foto 3 */}
-                            <TouchableOpacity
-                              style={styles.sideImageContainer}
-                              onPress={() => {
-                                if (selectedPlace.photos && selectedPlace.photos.length > 2) {
-                                  handleOpenImageViewer(2)
-                                }
-                              }}
-                              activeOpacity={0.8}
-                            >
-                              {selectedPlace.photos && selectedPlace.photos.length > 2 ? (
-                                <View style={{ width: "100%", height: "100%" }}>
-                                  <Image
-                                    source={{ uri: getPhotoUrl(selectedPlace.photos[2].photo_reference, 400) }}
-                                    style={{ width: "100%", height: "100%", borderRadius: 12 }}
-                                    resizeMode="cover"
-                                  />
-                                  {selectedPlace.photos && selectedPlace.photos.length > 3 && (
-                                    <View
-                                      style={{
-                                        position: "absolute",
-                                        width: "100%",
-                                        height: "100%",
-                                        backgroundColor: "rgba(0,0,0,0.4)",
-                                        justifyContent: "center",
-                                        alignItems: "center",
-                                        borderRadius: 12,
-                                      }}
-                                    >
-                                      <Text style={{ color: "white", fontWeight: "bold" }}>Ver todo</Text>
-                                    </View>
-                                  )}
-                                </View>
-                              ) : (
-                                <Text style={styles.sideImagePlaceholder}>Foto 3</Text>
-                              )}
-                            </TouchableOpacity>
+                      {/* Información del lugar */}
+                      <View style={{ marginBottom: 15 }}>
+                        <View
+                          style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: width * 0.06, fontWeight: "bold" }}>{selectedPlace.name}</Text>
+                          </View>
+                          <View style={{ alignItems: "flex-end" }}>
+                            <Text style={{ fontSize: width * 0.04, color: "#333", fontWeight: "600" }}>
+                              ⭐ {selectedPlace.rating}
+                            </Text>
                           </View>
                         </View>
 
-                        {/* Información del lugar */}
-                        <View style={{ marginBottom: 15 }}>
-                          <View
-                            style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontSize: width * 0.06, fontWeight: "bold" }}>{selectedPlace.name}</Text>
-                            </View>
-                            <View style={{ alignItems: "flex-end" }}>
-                              <Text style={{ fontSize: width * 0.04, color: "#333", fontWeight: "600" }}>
-                                ⭐ {selectedPlace.rating}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            marginTop: 10,
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                              <Text
+                                style={{
+                                  backgroundColor: "#eee",
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 6,
+                                  borderRadius: 12,
+                                  fontSize: width * 0.038,
+                                }}
+                              >
+                                Celiaco
+                              </Text>
+                              <Text
+                                style={{
+                                  backgroundColor: "#eee",
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 6,
+                                  borderRadius: 12,
+                                  fontSize: width * 0.038,
+                                }}
+                              >
+                                Vegetariano
+                              </Text>
+                              <Text
+                                style={{
+                                  backgroundColor: "#eee",
+                                  paddingHorizontal: 10,
+                                  paddingVertical: 6,
+                                  borderRadius: 12,
+                                  fontSize: width * 0.038,
+                                }}
+                              >
+                                Vegano
                               </Text>
                             </View>
                           </View>
-
-                          <View
-                            style={{
-                              flexDirection: "row",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              marginTop: 10,
-                            }}
-                          >
-                            <View style={{ flex: 1 }}>
-                              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                                <Text
-                                  style={{
-                                    backgroundColor: "#eee",
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    borderRadius: 12,
-                                    fontSize: width * 0.038,
-                                  }}
-                                >
-                                  Celiaco
-                                </Text>
-                                <Text
-                                  style={{
-                                    backgroundColor: "#eee",
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    borderRadius: 12,
-                                    fontSize: width * 0.038,
-                                  }}
-                                >
-                                  Vegetariano
-                                </Text>
-                                <Text
-                                  style={{
-                                    backgroundColor: "#eee",
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    borderRadius: 12,
-                                    fontSize: width * 0.038,
-                                  }}
-                                >
-                                  Vegano
-                                </Text>
-                              </View>
-                            </View>
-                            <View style={{ alignItems: "flex-end" }}>
-                              {location && (
-                                <Text style={{ fontSize: width * 0.04, color: "#333" }}>
-                                  🚶{" "}
-                                  {calculateDistance(
-                                    location.latitude,
-                                    location.longitude,
-                                    selectedPlace.geometry.location.lat,
-                                    selectedPlace.geometry.location.lng,
-                                  ).toFixed(1)}{" "}
-                                  km
-                                </Text>
-                              )}
-                            </View>
+                          <View style={{ alignItems: "flex-end" }}>
+                            {location && (
+                              <Text style={{ fontSize: width * 0.04, color: "#333" }}>
+                                🚶{" "}
+                                {calculateDistance(
+                                  location.latitude,
+                                  location.longitude,
+                                  selectedPlace.geometry.location.lat,
+                                  selectedPlace.geometry.location.lng,
+                                ).toFixed(1)}{" "}
+                                km
+                              </Text>
+                            )}
                           </View>
                         </View>
+                      </View>
 
-                        {/* Pestañas */}
-                        <View style={[styles.tabContainer, { marginBottom: 10 }]}>
-                          <TouchableOpacity
-                            style={[styles.tab, activeTab === "info" && styles.activeTab]}
-                            onPress={() => setActiveTab("info")}
-                          >
-                            <Text style={[styles.tabText, activeTab === "info" && styles.activeTabText]}>
-                              Información
-                            </Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.tab, activeTab === "reviews" && styles.activeTab]}
-                            onPress={() => setActiveTab("reviews")}
-                          >
-                            <Text style={[styles.tabText, activeTab === "reviews" && styles.activeTabText]}>
-                              Reseñas
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
+                      {/* Pestañas */}
+                      <View style={[styles.tabContainer, { marginBottom: 10 }]}>
+                        <TouchableOpacity
+                          style={[styles.tab, activeTab === "info" && styles.activeTab]}
+                          onPress={() => setActiveTab("info")}
+                        >
+                          <Text style={[styles.tabText, activeTab === "info" && styles.activeTabText]}>
+                            Información
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.tab, activeTab === "reviews" && styles.activeTab]}
+                          onPress={() => setActiveTab("reviews")}
+                        >
+                          <Text style={[styles.tabText, activeTab === "reviews" && styles.activeTabText]}>Reseñas</Text>
+                        </TouchableOpacity>
+                      </View>
 
-                        {/* Contenido de las pestañas */}
-                        <View style={[styles.tabContent, { paddingTop: 5 }]}>
-                          {activeTab === "info" ? (
-                            <View style={[styles.infoTabContent, { justifyContent: "flex-start", paddingTop: 20 }]}>
-                              {/* Botones de acción para la pestaña de información */}
-                              <View style={[styles.infoActionButtons, { marginTop: 10 }]}>
-                                <TouchableOpacity
-                                  style={styles.infoActionButton}
-                                  onPress={() => toggleFavorite(selectedPlace)}
-                                >
-                                  <FontAwesome
-                                    name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
-                                    size={20}
-                                    color="#ff9500"
-                                  />
-                                </TouchableOpacity>
+                      {/* Contenido de las pestañas */}
+                      <View style={[styles.tabContent, { paddingTop: 5 }]}>
+                        {activeTab === "info" ? (
+                          <View style={[styles.infoTabContent, { justifyContent: "flex-start", paddingTop: 20 }]}>
+                            {/* Botones de acción para la pestaña de información */}
+                            <View style={[styles.infoActionButtons, { marginTop: 10 }]}>
+                              <TouchableOpacity
+                                style={styles.infoActionButton}
+                                onPress={() => toggleFavorite(selectedPlace)}
+                              >
+                                <FontAwesome
+                                  name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
+                                  size={20}
+                                  color="#ff9500"
+                                />
+                              </TouchableOpacity>
 
-                                <TouchableOpacity style={styles.infoActionButton} onPress={handleDirections}>
-                                  <Ionicons name="navigate" size={20} color="#ff9500" />
-                                </TouchableOpacity>
+                              <TouchableOpacity style={styles.infoActionButton} onPress={handleDirections}>
+                                <Ionicons name="navigate" size={20} color="#ff9500" />
+                              </TouchableOpacity>
 
-                                <TouchableOpacity style={styles.infoActionButton} onPress={handleShare}>
-                                  <Ionicons name="share-social" size={20} color="#ff9500" />
-                                </TouchableOpacity>
-                              </View>
+                              <TouchableOpacity style={styles.infoActionButton} onPress={handleShare}>
+                                <Ionicons name="share-social" size={20} color="#ff9500" />
+                              </TouchableOpacity>
                             </View>
-                          ) : (
-                            <View>
-                              <Text style={styles.bottomSheetText}>
-                                Reseñas de {selectedPlace.name}.
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      </>
-                    ) : null}
-                  </View>
-                </Animated.View>
-              </PanGestureHandler>
-            )}
+                          </View>
+                        ) : (
+                          <View>
+                            <Text style={styles.bottomSheetText}>Reseñas de {selectedPlace.name}.</Text>
+                          </View>
+                        )}
+                      </View>
+                    </>
+                  ) : null}
+                </View>
+              </Animated.View>
+            </PanGestureHandler>
+          )}
 
-            {/* Visor de imágenes*/}
-            {showImageViewer && viewerPhotos.length > 0 && (
-              <View style={StyleSheet.absoluteFillObject}>
-                <ImageViewer
-                  photos={viewerPhotos}
-                  visible={showImageViewer}
-                  onClose={() => setShowImageViewer(false)}
-                  initialIndex={selectedImageIndex}
-                />
-              </View>
-            )}
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-
-      {!isKeyboardVisible && <BottomNavBar />}
+          {/* Visor de imágenes*/}
+          {showImageViewer && viewerPhotos.length > 0 && (
+            <View style={StyleSheet.absoluteFillObject}>
+              <ImageViewer
+                photos={viewerPhotos}
+                visible={showImageViewer}
+                onClose={() => setShowImageViewer(false)}
+                initialIndex={selectedImageIndex}
+              />
+            </View>
+          )}
+        </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   )
 }

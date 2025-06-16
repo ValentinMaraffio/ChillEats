@@ -11,7 +11,6 @@ import { useFavorites } from "../../context/favoritesContext"
 import { calculateDistance } from "../Main/mainBackend"
 import * as Location from "expo-location"
 import { useEffect, useState } from "react"
-import BottomNavBar from "../../components/bottomNavBar"
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
 
 const Tag = ({ label }: { label: string }) => (
@@ -83,8 +82,6 @@ export default function FavoritesScreen() {
             <Text style={styles.emptyText}>No tienes lugares favoritos</Text>
             <Text style={styles.emptySubtext}>Agrega lugares a tus favoritos desde el mapa para verlos aquí</Text>
           </View>
-
-          {!isKeyboardVisible && <BottomNavBar />}
         </ImageBackground>
         <StatusBar style="light" />
       </SafeAreaView>
@@ -140,8 +137,6 @@ export default function FavoritesScreen() {
             </View>
           ))}
         </ScrollView>
-
-        {!isKeyboardVisible && <BottomNavBar />}
       </ImageBackground>
       <StatusBar style="light" />
     </SafeAreaView>

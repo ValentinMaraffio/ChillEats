@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { StatusBar } from 'expo-status-bar';
+"use client"
+
+import { useState } from "react"
+import { StatusBar } from "expo-status-bar"
 import {
   TouchableOpacity,
   Text,
@@ -7,67 +9,48 @@ import {
   Image,
   TextInput,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { 
-  RegisterNavigationProp, 
-  icon, 
-  googleLogo, 
-  appleLogo,
-  validateForm,
-  registerUser
-} from './registerBackend';
-import { styles } from './registerStyles';
-import BottomNavBar from "../../components/bottomNavBar"
-import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
+} from "react-native"
+import { useNavigation } from "@react-navigation/native"
+import { Ionicons } from "@expo/vector-icons"
+import { type RegisterNavigationProp, icon, googleLogo, appleLogo, validateForm, registerUser } from "./registerBackend"
+import { styles } from "./registerStyles"
 
 export default function RegisterScreen() {
-  const navigation = useNavigation<RegisterNavigationProp>();
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const isKeyboardVisible = useKeyboardVisibility()
+  const navigation = useNavigation<RegisterNavigationProp>()
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
 
   const handleRegister = async () => {
-    // Validate form
-    const validation = validateForm(username, email, password, confirmPassword);
+    const validation = validateForm(username, email, password, confirmPassword)
     if (!validation.isValid) {
-      Alert.alert('Error', validation.message);
-      return;
+      Alert.alert("Error", validation.message)
+      return
     }
 
-    // Register user
-    const result = await registerUser(username, email, password);
-    Alert.alert(result.success ? 'Éxito' : 'Error', result.message);
-    
+    const result = await registerUser(username, email, password)
+    Alert.alert(result.success ? "Éxito" : "Error", result.message)
+
     if (result.success) {
-      // Navigate to verification screen
-      navigation.navigate('Verification', { email });
+      navigation.navigate("Verification", { email })
     }
-  };
+  }
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={{ flex: 1 }} >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
-            <Image
-              source={icon}
-              style={styles.iconStyle}
-              resizeMode="contain"
-            />
+            {/* Botón de retorno */}
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+
+            <Image source={icon} style={styles.iconStyle} resizeMode="contain" />
 
             <TextInput
               style={styles.TextInput}
@@ -102,17 +85,11 @@ export default function RegisterScreen() {
               onChangeText={setConfirmPassword}
             />
 
-            <TouchableOpacity
-              style={styles.signInButton}
-              onPress={handleRegister}
-            >
+            <TouchableOpacity style={styles.signInButton} onPress={handleRegister}>
               <Text style={styles.buttonText}>Registrar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.login}
-              onPress={() => navigation.navigate('Login')}
-            >
+            <TouchableOpacity style={styles.login} onPress={() => navigation.navigate("Login")}>
               <Text style={styles.buttonTextLogin}>Volver a Inicio de Sesion</Text>
             </TouchableOpacity>
 
@@ -122,18 +99,12 @@ export default function RegisterScreen() {
               <View style={styles.line} />
             </View>
 
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={() => alert('¡Botón presionado!')}
-            >
+            <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
               <Image source={googleLogo} style={styles.socialIconStyle} />
               <Text style={styles.buttonText}>Continuar con Google</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.continueButton}
-              onPress={() => alert('¡Botón presionado!')}
-            >
+            <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
               <Image source={appleLogo} style={styles.socialIconStyle} />
               <Text style={styles.buttonText}>Continuar con Apple</Text>
             </TouchableOpacity>
@@ -145,9 +116,7 @@ export default function RegisterScreen() {
         </ScrollView>
       </TouchableWithoutFeedback>
 
-      {!isKeyboardVisible && <BottomNavBar />}
-
       <StatusBar style="light" />
-    </KeyboardAvoidingView>
-  );
+    </View>
+  )
 }

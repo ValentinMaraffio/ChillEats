@@ -1,14 +1,8 @@
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack"
+import type { RootStackParamList } from "../../types/navigation"
 
-// Type definitions
-export type ProfileProps = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+export type ProfileProps = NativeStackScreenProps<RootStackParamList, "Profile">
 
-// Helper functions
-export const handleUserLogout = (
-  logout: () => void, 
-  navigation: ProfileProps['navigation']
-) => {
-  logout();
-  navigation.navigate('Login');
-};
+export const handleUserLogout = (logout: () => void) => {
+  logout()
+}
