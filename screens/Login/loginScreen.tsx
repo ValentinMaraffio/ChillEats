@@ -14,6 +14,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native"
+import { LinearGradient } from "expo-linear-gradient"
 import { useNavigation } from "@react-navigation/native"
 import { useState } from "react"
 import { useAuth } from "../../context/authContext"
@@ -55,61 +56,67 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <View style={styles.content}>
-            {/* Botón de retorno */}
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="white" />
-            </TouchableOpacity>
+      <LinearGradient
+        colors={['#ff4500', '#ffab40']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={{ flex: 1 }}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            <View style={styles.content}>
+              {/* Botón de retorno */}
+              <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={24} color="white" />
+              </TouchableOpacity>
 
-            <Image source={icon} style={styles.iconStyle} resizeMode="contain" />
+              <Image source={icon} style={styles.iconStyle} resizeMode="contain" />
 
-            <TextInput
-              style={styles.TextInput}
-              placeholder="Email"
-              placeholderTextColor="white"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-            />
+              <TextInput
+                style={styles.TextInput}
+                placeholder="Email"
+                placeholderTextColor="white"
+                keyboardType="email-address"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+              />
 
-            <TextInput
-              style={styles.TextInput}
-              placeholder="Contraseña"
-              placeholderTextColor="white"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+              <TextInput
+                style={styles.TextInput}
+                placeholder="Contraseña"
+                placeholderTextColor="white"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-              <Text style={styles.buttonText}>Iniciar Sesión</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                <Text style={styles.buttonText}>Iniciar Sesión</Text>
+              </TouchableOpacity>
 
-            <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-            </Pressable>
+              <Pressable onPress={() => navigation.navigate("ForgotPassword")}>
+                <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+              </Pressable>
 
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.registerText}>¿No tienes cuenta? Registrate</Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+                <Text style={styles.registerText}>¿No tienes cuenta? Registrate</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
-              <Image source={googleLogo} style={styles.socialIconStyle} />
-              <Text style={styles.buttonText}>Continuar con Google</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
+                <Image source={googleLogo} style={styles.socialIconStyle} />
+                <Text style={styles.buttonText}>Continuar con Google</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
-              <Image source={appleLogo} style={styles.socialIconStyle} />
-              <Text style={styles.buttonText}>Continuar con Apple</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-
-      <StatusBar style="light" />
+              <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
+                <Image source={appleLogo} style={styles.socialIconStyle} />
+                <Text style={styles.buttonText}>Continuar con Apple</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+        <StatusBar style="light" />
+      </LinearGradient>
     </KeyboardAvoidingView>
   )
 }

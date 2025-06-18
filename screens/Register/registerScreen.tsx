@@ -17,6 +17,7 @@ import { useNavigation } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import { type RegisterNavigationProp, icon, googleLogo, appleLogo, validateForm, registerUser } from "./registerBackend"
 import { styles } from "./registerStyles"
+import { LinearGradient } from "expo-linear-gradient"
 
 export default function RegisterScreen() {
   const navigation = useNavigation<RegisterNavigationProp>()
@@ -41,7 +42,12 @@ export default function RegisterScreen() {
   }
 
   return (
-    <View style={{ flex: 1 }} >
+    <LinearGradient
+        colors={['#ff4500', '#ffab40']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.container}
+      >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
@@ -117,6 +123,6 @@ export default function RegisterScreen() {
       </TouchableWithoutFeedback>
 
       <StatusBar style="light" />
-    </View>
+    </LinearGradient>
   )
 }
