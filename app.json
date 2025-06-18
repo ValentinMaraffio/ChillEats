@@ -13,9 +13,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.chilleats.app",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.chilleats.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -23,6 +25,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a1f847eb-d8b1-43cf-a2ee-a46ec0d91980"
+      }
     }
   }
 }

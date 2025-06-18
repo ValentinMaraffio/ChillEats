@@ -11,12 +11,12 @@ export const appleLogo = require('../../assets/img/appleLogo.png');
 
 // Validation functions
 export const validateForm = (
-  username: string,
+  name: string,
   email: string,
   password: string,
   confirmPassword: string
 ): { isValid: boolean; message: string } => {
-  if (!email || !password || !confirmPassword || !username) {
+  if (!email || !password || !confirmPassword || !name) {
     return { isValid: false, message: 'Por favor completa todos los campos' };
   }
 
@@ -29,18 +29,18 @@ export const validateForm = (
 
 // API functions
 export const registerUser = async (
-  username: string,
+  name: string,
   email: string,
   password: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await fetch('http://192.168.0.6:8000/api/auth/signup', {
+    const response = await fetch('http://172.16.4.117:8000/api/auth/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username,
+        name,
         email,
         password,
       }),
@@ -66,7 +66,7 @@ export const registerUser = async (
 
 export const sendVerificationCode = async (email: string): Promise<void> => {
   try {
-    await fetch('http://192.168.0.6:8000/api/auth/send-verification-code', {
+    await fetch('http://172.16.4.117:8000/api/auth/send-verification-code', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

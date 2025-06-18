@@ -86,6 +86,7 @@ export default function App() {
               <Stack.Screen name="Verification" component={VerificationScreen} />
               <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
               <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+              <Stack.Screen name="Profile" component={ProfileScreen} />
             </Stack.Navigator>
           </FavoritesProvider>
         </AuthProvider>

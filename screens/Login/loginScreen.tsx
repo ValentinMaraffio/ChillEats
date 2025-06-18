@@ -1,5 +1,3 @@
-"use client"
-
 import { StatusBar } from "expo-status-bar"
 import {
   TouchableOpacity,
@@ -14,12 +12,13 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
 import { useNavigation } from "@react-navigation/native"
 import { useState } from "react"
 import { useAuth } from "../../context/authContext"
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
 import { Ionicons } from "@expo/vector-icons"
+import BtnLoginiGoogle from '../../components/btnLoginGoogle';
+import { LinearGradient } from "expo-linear-gradient"
 
 import { icon, googleLogo, appleLogo, type LoginNavigationProp } from "./loginBackend"
 import { styles } from "./loginStyles"
@@ -27,34 +26,38 @@ import axios from "axios"
 import { parseJwt } from "./loginBackend"
 
 export default function LoginScreen() {
-  const navigation = useNavigation<LoginNavigationProp>()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const { login } = useAuth()
+  const navigation = useNavigation<LoginNavigationProp>();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { login } = useAuth();
   const isKeyboardVisible = useKeyboardVisibility()
-
+  
+  // Modified to handle the login directly in this component
   const handleLogin = async () => {
     try {
-      const res = await axios.post("http://192.168.0.6:8000/api/auth/signin", { email, password })
-      const token = res.data.token
+      const res = await axios.post('http://172.16.4.117:8000/api/auth/signin', { email, password });
+      const token = res.data.token;
+  
+      await Promise.resolve(login(token));
 
-      await Promise.resolve(login(token))
+          const decoded = parseJwt(token);
 
-      navigation.navigate("Profile", {
-        username: parseJwt(token).username,
+  
+      navigation.navigate('Profile', {
+        name: parseJwt(token).name,
         email: parseJwt(token).email,
-      })
+      });
     } catch (error: any) {
-      const data = error.response?.data
+      const data = error.response?.data;
       if (data?.requiresVerification) {
-        navigation.navigate("Verification", { email: data.email })
+        navigation.navigate('Verification', { email: data.email });
       } else {
-        alert(data?.message || "Ocurrió un error")
+        alert(data?.message || 'Ocurrió un error');
       }
     }
-  }
+  };
 
-  return (
+return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <LinearGradient
         colors={['#ff4500', '#ffab40']}
@@ -66,7 +69,8 @@ export default function LoginScreen() {
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <View style={styles.content}>
               {/* Botón de retorno */}
-              <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("MainTabs", { screen:"User" })}
+                >
                 <Ionicons name="arrow-back" size={24} color="white" />
               </TouchableOpacity>
 
@@ -103,10 +107,9 @@ export default function LoginScreen() {
                 <Text style={styles.registerText}>¿No tienes cuenta? Registrate</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
-                <Image source={googleLogo} style={styles.socialIconStyle} />
-                <Text style={styles.buttonText}>Continuar con Google</Text>
-              </TouchableOpacity>
+              <View>
+                <BtnLoginiGoogle />
+              </View>
 
               <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
                 <Image source={appleLogo} style={styles.socialIconStyle} />

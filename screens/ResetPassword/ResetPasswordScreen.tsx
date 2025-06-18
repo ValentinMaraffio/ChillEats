@@ -41,7 +41,7 @@ export default function ResetPasswordScreen() {
 
   const handleValidateCode = async () => {
     try {
-      const response = await axios.post("http://192.168.0.6:8000/api/auth/validate-forgot-password-code", {
+      const response = await axios.post("http://172.16.4.117:8000/api/auth/validate-forgot-password-code", {
         email,
         providedCode: code,
       })
@@ -55,7 +55,7 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     try {
-      await axios.patch("http://192.168.0.6:8000/api/auth/verify-forgot-password-code", {
+      await axios.patch("http://172.16.4.117:8000/api/auth/verify-forgot-password-code", {
         email,
         providedCode: code,
         newPassword,

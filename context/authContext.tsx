@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthContextType = {
-  user: { username: string; email: string } | null;
+  user: { name: string; email: string } | null;
   token: string | null;
   login: (token: string) => void;
   logout: () => void;
@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<{ username: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const storedToken = await AsyncStorage.getItem('userToken');
       if (storedToken) {
         const payload = JSON.parse(atob(storedToken.split('.')[1]));
-        setUser({ username: payload.username, email: payload.email });
+        setUser({ name: payload.name, email: payload.email });
         setToken(storedToken);
       }
     };
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (newToken: string) => {
     const payload = JSON.parse(atob(newToken.split('.')[1]));
-    setUser({ username: payload.username, email: payload.email });
+    setUser({ name: payload.name, email: payload.email });
     setToken(newToken);
     await AsyncStorage.setItem('userToken', newToken);
   };

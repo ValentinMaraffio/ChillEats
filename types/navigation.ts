@@ -1,10 +1,10 @@
 export type RootStackParamList = {
-  MainTabs: undefined
+  MainTabs: {screen?: keyof TabParamList}
   Login: undefined
   Register: undefined
   Verification: { email: string }
   Profile: {
-    username: string
+    name: string
     email: string
   }
   ForgotPassword: undefined

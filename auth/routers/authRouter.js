@@ -16,4 +16,6 @@ router.patch('/verify-forgot-password-code', authController.verifyForgotPassword
 
 router.post('/validate-forgot-password-code', authController.validateForgotPasswordCode);
 
+router.post('/google-signin', authController.googleSignin);
+
 module.exports = router;

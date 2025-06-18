@@ -17,7 +17,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendCode = async () => {
     try {
-      await axios.patch('http://192.168.0.6:8000/api/auth/send-forgot-password-code', { email });
+      await axios.patch('http://172.16.4.117:8000/api/auth/send-forgot-password-code', { email });
       Alert.alert('Éxito', 'Código enviado a tu correo');
       navigation.navigate('ResetPassword', { email });
     } catch (err: any) {

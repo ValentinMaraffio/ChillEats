@@ -3,55 +3,44 @@ const { signupSchema, signinSchema, acceptCodeSchema, changePasswordSchema, acce
 const User = require('../models/usersModel');
 const { doHash, doHashValidation, hmacProcess } = require('../utils/hashing');
 const transport = require('../middlewares/sendMail');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client("866286178679-b274j2kosk0251qd0s0ia22rklrb72mp.apps.googleusercontent.com");
 
 
 exports.signup = async (req, res) => {
-	const { email, password, username } = req.body;
-	try {
-		const { error, value } = signupSchema.validate({ email, password, username });
+  const { email, password, name } = req.body;
+  try {
+    const { error, value } = signupSchema.validate({ email, password, name });
 
-		if (error) {
-			return res.status(401).json({
-				success: false,
-				message: error.details[0].message,
-			});
-		}
+    if (error) {
+      return res.status(401).json({ success: false, message: error.details[0].message });
+    }
 
-		const existingUser = await User.findOne({ email });
-		if (existingUser) {
-			return res.status(401).json({
-				success: false,
-				message: 'User already exists',
-			});
-		}
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(401).json({ success: false, message: 'User already exists' });
+    }
 
-		// ✅ Verificar si el username ya está en uso
-		const existingUsername = await User.findOne({ username });
-		if (existingUsername) {
-			return res.status(401).json({
-				success: false,
-				message: 'Username is already taken',
-			});
-		}
+    const hashedPassword = await doHash(password, 12);
 
-		const hashedPassword = await doHash(password, 12);
+    const newUser = new User({
+      email,
+      name,
+      password: hashedPassword,
+      verified: false,
+      authProvider: 'local'
+    });
+    const result = await newUser.save();
+    result.password = undefined;
 
-		const newUser = new User({
-			email,
-			username,
-			password: hashedPassword,
-		});
-		const result = await newUser.save();
-		result.password = undefined;
-
-		res.status(201).json({
-			success: true,
-			message: 'Your account has been created successfully',
-			result,
-		});
-	} catch (error) {
-		console.log(error);
-	}
+    res.status(201).json({
+      success: true,
+      message: 'Your account has been created successfully',
+      result,
+    });
+  } catch (error) {
+    console.log(error);
+  }
 };
 
 exports.signin = async (req, res) => {
@@ -66,6 +55,13 @@ exports.signin = async (req, res) => {
   
       if (!existingUser) {
         return res.status(401).json({ success: false, message: "User does not exist" });
+      }
+
+      if (existingUser.authProvider !== 'local') {
+        return res.status(401).json({
+        success: false,
+        message: "Please log in using Google"
+        });
       }
   
       const result = await doHashValidation(password, existingUser.password);
@@ -105,7 +101,7 @@ exports.signin = async (req, res) => {
         {
           userId: existingUser._id,
           email: existingUser.email,
-          username: existingUser.username,
+          name: existingUser.name,
           verified: existingUser.verified,
         },
         process.env.TOKEN_SECRET,
@@ -214,7 +210,7 @@ exports.verifyVerificationCode = async (req, res) => {
                 {
                     userId: existingUser._id,
                     email: existingUser.email,
-                    username: existingUser.username,
+                    name: existingUser.name,
                     verified: true,
                 },
                 process.env.TOKEN_SECRET,
@@ -314,6 +310,10 @@ exports.sendForgotPasswordCode = async (req, res) =>{
         
         if(!existingUser){
             return res.status(404).json({success:false, message:"User does not exists"})
+        }
+
+        if(existingUser.authProvider !== 'local'){
+            return res.status(404).json({success:false, message:"No puedes recuperar contraseña de una cuenta de Google"})
         }
 
         const codeValue = Math.floor(100000 + Math.random() * 900000).toString(); // 6 dígitos
@@ -437,5 +437,59 @@ exports.validateForgotPasswordCode = async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+exports.googleSignin = async (req, res) => {
+  const { idToken } = req.body;
+
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: "866286178679-b274j2kosk0251qd0s0ia22rklrb72mp.apps.googleusercontent.com",
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name } = payload;
+
+    let existingUser = await User.findOne({ email });
+
+    if (!existingUser) {
+      existingUser = await User.create({
+        email,
+        name,
+        password: null,
+        verified: true,
+        authProvider: 'google',
+      });
+    } else {
+      // Si el usuario ya existe pero es local:
+      if (existingUser.authProvider === 'local') {
+        // Si era local, actualizamos como verificado porque Google valida el email
+        if (!existingUser.verified) {
+        existingUser.verified = true;
+        await existingUser.save();
+        }
+      } 
+    }
+    const token = jwt.sign(
+      {
+        userId: existingUser._id,
+        email: existingUser.email,
+        name: existingUser.name,
+        verified: existingUser.verified,
+      },
+      process.env.TOKEN_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      message: 'Logged in successfully with Google',
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(401).json({ success: false, message: 'Invalid Google token' });
   }
 };

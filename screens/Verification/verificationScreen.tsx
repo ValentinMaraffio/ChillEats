@@ -66,7 +66,7 @@ export default function VerificationScreen() {
       const userData = parseJwt(result.token)
 
       navigation.navigate("Profile", {
-        username: userData.username,
+        name: userData.name,
         email: userData.email,
       })
     }

@@ -1,5 +1,3 @@
-"use client"
-
 import { useState } from "react"
 import { StatusBar } from "expo-status-bar"
 import {
@@ -17,37 +15,37 @@ import { useNavigation } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import { type RegisterNavigationProp, icon, googleLogo, appleLogo, validateForm, registerUser } from "./registerBackend"
 import { styles } from "./registerStyles"
-import { LinearGradient } from "expo-linear-gradient"
+
+import BtnLoginiGoogle from '../../components/btnLoginGoogle';
 
 export default function RegisterScreen() {
-  const navigation = useNavigation<RegisterNavigationProp>()
-  const [username, setUsername] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
+  const navigation = useNavigation<RegisterNavigationProp>();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
 
   const handleRegister = async () => {
-    const validation = validateForm(username, email, password, confirmPassword)
+    // Validate form
+    const validation = validateForm(name, email, password, confirmPassword);
     if (!validation.isValid) {
-      Alert.alert("Error", validation.message)
-      return
+      Alert.alert('Error', validation.message);
+      return;
     }
 
-    const result = await registerUser(username, email, password)
-    Alert.alert(result.success ? "Éxito" : "Error", result.message)
-
+    // Register user
+    const result = await registerUser(name, email, password);
+    Alert.alert(result.success ? 'Éxito' : 'Error', result.message);
+    
     if (result.success) {
-      navigation.navigate("Verification", { email })
+      // Navigate to verification screen
+      navigation.navigate('Verification', { email });
     }
-  }
+  };
 
   return (
-    <LinearGradient
-        colors={['#ff4500', '#ffab40']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.container}
-      >
+    <View style={{ flex: 1 }} >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
@@ -62,8 +60,8 @@ export default function RegisterScreen() {
               style={styles.TextInput}
               placeholder="Nombre de Usuario"
               placeholderTextColor="white"
-              value={username}
-              onChangeText={setUsername}
+              value={name}
+              onChangeText={setName}
             />
             <TextInput
               style={styles.TextInput}
@@ -105,10 +103,9 @@ export default function RegisterScreen() {
               <View style={styles.line} />
             </View>
 
-            <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
-              <Image source={googleLogo} style={styles.socialIconStyle} />
-              <Text style={styles.buttonText}>Continuar con Google</Text>
-            </TouchableOpacity>
+            <View>
+              <BtnLoginiGoogle />
+            </View>
 
             <TouchableOpacity style={styles.continueButton} onPress={() => alert("¡Botón presionado!")}>
               <Image source={appleLogo} style={styles.socialIconStyle} />
@@ -123,6 +120,6 @@ export default function RegisterScreen() {
       </TouchableWithoutFeedback>
 
       <StatusBar style="light" />
-    </LinearGradient>
-  )
+    </View>
+  );
 }

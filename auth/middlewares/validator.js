@@ -1,7 +1,7 @@
 const Joi = require('joi');
 
 exports.signupSchema = Joi.object({
-	username: Joi.string()
+	name: Joi.string()
 		.min(3)
 		.max(30)
 		.pattern(new RegExp('^[a-zA-Z][a-zA-Z0-9_.]*$'))
