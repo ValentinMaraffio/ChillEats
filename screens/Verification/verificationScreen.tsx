@@ -21,6 +21,7 @@ import {
 import { styles } from "./verificationStyles"
 import { parseJwt } from "../Login/loginBackend"
 import { useAuth } from "../../context/authContext"
+import { LinearGradient } from "expo-linear-gradient"
 
 export default function VerificationScreen() {
   const navigation = useNavigation<VerificationNavigationProp>()
@@ -83,7 +84,13 @@ export default function VerificationScreen() {
     }
   }
 
-  return (
+    return (
+    <LinearGradient
+    colors={['#ff4500', '#FF9500']}
+    style={{ flex: 1 }}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 0, y: 1 }}
+  >
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
         {/* Botón volver */}
@@ -148,5 +155,6 @@ export default function VerificationScreen() {
         </TouchableOpacity>
       </View>
     </TouchableWithoutFeedback>
+    </LinearGradient>
   )
 }

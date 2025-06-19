@@ -5,15 +5,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import { styles } from './ForgotStyles';
 import axios from 'axios';
-import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility" 
-import { FontAwesome } from "@expo/vector-icons"
-
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility";
+import { FontAwesome } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function ForgotPasswordScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>>();
   const [email, setEmail] = useState('');
-  const isKeyboardVisible = useKeyboardVisibility()
-  
+  const isKeyboardVisible = useKeyboardVisibility();
 
   const handleSendCode = async () => {
     try {
@@ -26,28 +25,35 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Login")}>
-                <FontAwesome name="arrow-left" size={24} color="white" />
-              </TouchableOpacity>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.innerContainer}>
-          <Text style={styles.title}>Recuperar Contraseña</Text>
-          <Text style={styles.label}>Introduce tu correo electrónico:</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="white"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TouchableOpacity style={styles.button} onPress={handleSendCode}>
-            <Text style={styles.buttonText}>Enviar código</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+    <LinearGradient
+      colors={['#ff4500', '#FF9500']}
+      style={{ flex: 1 }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Login")}>
+          <FontAwesome name="arrow-left" size={24} color="white" />
+        </TouchableOpacity>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.innerContainer}>
+            <Text style={styles.title}>Recuperar Contraseña</Text>
+            <Text style={styles.label}>Introduce tu correo electrónico:</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="white"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TouchableOpacity style={styles.button} onPress={handleSendCode}>
+              <Text style={styles.buttonText}>Enviar código</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }

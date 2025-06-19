@@ -3,7 +3,6 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-nat
 
 export const styles = StyleSheet.create({
   container: {
-    backgroundColor: "#ff9500",
     alignItems: "center",
     paddingBottom: hp("4%"),
     width: "100%",
@@ -12,7 +11,6 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     paddingBottom: hp("15%"),
-    backgroundColor: "#ff9500",
   },
   backButton: {
     position: "absolute",

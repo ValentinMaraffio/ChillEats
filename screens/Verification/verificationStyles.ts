@@ -4,7 +4,6 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-nat
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ff9500",
     alignItems: "center",
     justifyContent: "center",
     padding: wp("5%"),

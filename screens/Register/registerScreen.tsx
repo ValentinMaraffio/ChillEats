@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import { type RegisterNavigationProp, icon, googleLogo, appleLogo, validateForm, registerUser } from "./registerBackend"
 import { styles } from "./registerStyles"
+import { LinearGradient } from "expo-linear-gradient"
 
 import BtnLoginiGoogle from '../../components/btnLoginGoogle';
 
@@ -45,7 +46,12 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }} >
+      <LinearGradient
+        colors={['#ff4500', '#FF9500']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.container}
+      >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
@@ -93,10 +99,6 @@ export default function RegisterScreen() {
               <Text style={styles.buttonText}>Registrar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.login} onPress={() => navigation.navigate("Login")}>
-              <Text style={styles.buttonTextLogin}>Volver a Inicio de Sesion</Text>
-            </TouchableOpacity>
-
             <View style={styles.dividerContainer}>
               <View style={styles.line} />
               <Text style={styles.dividerText}>or</Text>
@@ -120,6 +122,6 @@ export default function RegisterScreen() {
       </TouchableWithoutFeedback>
 
       <StatusBar style="light" />
-    </View>
+    </LinearGradient>
   );
 }

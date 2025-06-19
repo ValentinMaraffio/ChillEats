@@ -103,10 +103,6 @@ return (
                 <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
               </Pressable>
 
-              <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-                <Text style={styles.registerText}>¿No tienes cuenta? Registrate</Text>
-              </TouchableOpacity>
-
               <View>
                 <BtnLoginiGoogle />
               </View>

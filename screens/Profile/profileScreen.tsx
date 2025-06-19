@@ -76,9 +76,7 @@ export default function ProfileScreen({ navigation }: any) {
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="white" />
-          </TouchableOpacity>
+
           <Text style={styles.headerTitle}>Mi Perfil</Text>
           <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
             <Ionicons name="settings-outline" size={24} color="white" />
