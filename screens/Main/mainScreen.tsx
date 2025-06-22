@@ -50,8 +50,11 @@ import { PanGestureHandler } from "react-native-gesture-handler"
 import ImageViewer from "../../components/imageViewer"
 import { StatusBar } from 'expo-status-bar';
 
-
 const { width, height } = Dimensions.get("window")
+
+// OPTIMIZACIÓN: Constantes para límites
+const MAX_PLACES_LIMIT = 15 // Reducido de 20 a 15
+const INFINITE_COPIES = 2 // Reducido de 3 a 2 copias para menos memoria
 
 export default function MainScreen() {
   // Estado para el visor de imágenes
@@ -65,7 +68,6 @@ export default function MainScreen() {
     }>
   >([])
 
-  // Resto del código existente...
   const scrollX = useRef(new RNAnimated.Value(0)).current
   const flatListRef = useRef<FlatList>(null)
   const isKeyboardVisible = useKeyboardVisibility()
@@ -82,7 +84,6 @@ export default function MainScreen() {
   const markerPressRef = useRef(false)
   const isScrollingRef = useRef(false)
   const isDraggingMapRef = useRef(false)
-
 
   // Estado para indicar que se están cargando detalles
   const [isLoadingDetails, setIsLoadingDetails] = useState(false)
@@ -102,30 +103,69 @@ export default function MainScreen() {
   const [nearbyPlacesList, setNearbyPlacesList] = useState<Place[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
 
+  // Estados para el carrusel infinito
+  const [infiniteData, setInfiniteData] = useState<Place[]>([])
+  const [realCurrentIndex, setRealCurrentIndex] = useState(0)
+  const isInfiniteScrolling = useRef(false)
+
   const [showBottomSheet, setShowBottomSheet] = useState(false)
-  const bottomSheetHeight = height // Cambiar de height * 0.9 a height completo
+  const bottomSheetHeight = height
 
-  // MEJORA: Ref para controlar cuando necesitamos reposicionar el carrusel
   const needsRepositioning = useRef(false)
-
-  // MEJORA: Usando react-native-reanimated con límites más estrictos
   const translateY = useSharedValue(height)
 
-
-  // MEJORA: Snap points con límites más seguros - respetar área segura
+  // Snap points con límites más seguros
   const snapPoints = {
-    expanded: 0, // Permitir que vaya hasta arriba completamente
+    expanded: 0,
     middle: height * 0.4,
     closed: height,
   }
 
-  // MEJORA: Límites absolutos para prevenir crashes - respetar área segura
-  const ABSOLUTE_MIN = 0 // Permitir ir hasta arriba completamente
+  const ABSOLUTE_MIN = 0
   const ABSOLUTE_MAX = height + 100
+
+  // OPTIMIZACIÓN: Función mejorada para crear datos infinitos con menos copias
+  const createInfiniteData = useCallback((data: Place[]) => {
+    if (data.length === 0) return []
+    if (data.length === 1) return data // Si solo hay un elemento, no necesitamos duplicar
+    
+    // OPTIMIZACIÓN: Usar menos copias para reducir memoria
+    const copies = INFINITE_COPIES
+    const infiniteArray: Place[] = []
+    
+    // Agregar copias al inicio
+    for (let i = 0; i < copies; i++) {
+      infiniteArray.push(...data.map(place => ({ ...place, _infiniteId: `start-${i}-${place.place_id || Math.random()}` })))
+    }
+    
+    // Agregar datos originales
+    infiniteArray.push(...data.map(place => ({ ...place, _infiniteId: `original-${place.place_id || Math.random()}` })))
+    
+    // Agregar copias al final
+    for (let i = 0; i < copies; i++) {
+      infiniteArray.push(...data.map(place => ({ ...place, _infiniteId: `end-${i}-${place.place_id || Math.random()}` })))
+    }
+    
+    return infiniteArray
+  }, [])
+
+  // Función para obtener el índice real basado en el índice infinito
+  const getRealIndex = useCallback((infiniteIndex: number, dataLength: number) => {
+    if (dataLength === 0) return 0
+    return infiniteIndex % dataLength
+  }, [])
+
+  // OPTIMIZACIÓN: Función mejorada para obtener el índice inicial
+  const getInitialInfiniteIndex = useCallback((realIndex: number, dataLength: number) => {
+    if (dataLength === 0) return 0
+    if (dataLength === 1) return 0
+    
+    const copies = INFINITE_COPIES
+    return (copies * dataLength) + realIndex
+  }, [])
 
   // Función para obtener el snap point más cercano con validación
   const getClosestSnapPoint = (position: number) => {
-    // Asegurar que la posición esté dentro de límites seguros
     const safePosition = Math.max(ABSOLUTE_MIN, Math.min(ABSOLUTE_MAX, position))
 
     const distances = [
@@ -140,65 +180,53 @@ export default function MainScreen() {
   const closeBottomSheetJS = () => {
     try {
       setShowBottomSheet(false)
-      // MEJORA: Marcar que necesitamos reposicionar el carrusel
       needsRepositioning.current = true
     } catch (error) {
       console.log("Error closing bottom sheet:", error)
     }
   }
 
-  // MEJORA: Gesture handler con límites más estrictos y validaciones
+  // Gesture handler con límites más estrictos y validaciones
   const gestureHandler = useAnimatedGestureHandler<any, { y: number }>({
     onStart: (_, context) => {
       context.y = translateY.value
     },
     onActive: (event, context) => {
-      // MEJORA: Validar que los valores sean números válidos
       if (typeof context.y !== "number" || typeof event.translationY !== "number") {
         return
       }
 
       const newPosition = context.y + event.translationY
-
-      // MEJORA: Usar clamp para límites más estrictos
       let clampedPosition = clamp(newPosition, ABSOLUTE_MIN, ABSOLUTE_MAX)
 
-      // MEJORA: Resistencia más suave y controlada
       if (newPosition < snapPoints.expanded) {
         const overscroll = snapPoints.expanded - newPosition
-        clampedPosition = snapPoints.expanded - Math.min(overscroll * 0.2, 30) // Máximo 30px de overscroll
+        clampedPosition = snapPoints.expanded - Math.min(overscroll * 0.2, 30)
       } else if (newPosition > snapPoints.closed) {
         const overscroll = newPosition - snapPoints.closed
-        clampedPosition = snapPoints.closed + Math.min(overscroll * 0.2, 50) // Máximo 50px de overscroll
+        clampedPosition = snapPoints.closed + Math.min(overscroll * 0.2, 50)
       }
 
-      // MEJORA: Validar el valor final antes de asignarlo
       if (typeof clampedPosition === "number" && !isNaN(clampedPosition)) {
         translateY.value = clampedPosition
       }
     },
     onEnd: (event) => {
       try {
-        // MEJORA: Validar velocidad y posición
         const velocity = typeof event.velocityY === "number" ? event.velocityY : 0
         const currentPos = typeof translateY.value === "number" ? translateY.value : snapPoints.middle
-
-        // MEJORA: Limitar velocidad extrema
         const clampedVelocity = clamp(velocity, -5000, 5000)
 
         let targetPosition: number
 
-        // Lógica de snap mejorada con validaciones
         if (Math.abs(clampedVelocity) > 1200) {
           if (clampedVelocity > 0) {
-            // Movimiento rápido hacia abajo
             if (currentPos < snapPoints.middle) {
               targetPosition = snapPoints.middle
             } else {
               targetPosition = snapPoints.closed
             }
           } else {
-            // Movimiento rápido hacia arriba
             if (currentPos > snapPoints.middle) {
               targetPosition = snapPoints.middle
             } else {
@@ -206,21 +234,18 @@ export default function MainScreen() {
             }
           }
         } else {
-          // Para velocidades normales, usar la posición más cercana
           targetPosition = getClosestSnapPoint(currentPos)
         }
 
-        // MEJORA: Validar posición objetivo
         if (typeof targetPosition !== "number" || isNaN(targetPosition)) {
           targetPosition = snapPoints.middle
         }
 
-        // Animación con configuración más conservadora
         if (targetPosition === snapPoints.closed) {
           translateY.value = withTiming(
             targetPosition,
             {
-              duration: 300, // Duración un poco más larga para más estabilidad
+              duration: 300,
             },
             (finished) => {
               if (finished) {
@@ -230,21 +255,19 @@ export default function MainScreen() {
           )
         } else {
           translateY.value = withSpring(targetPosition, {
-            damping: 25, // Más damping para más estabilidad
-            stiffness: 250, // Menos stiffness para suavidad
-            mass: 1, // Masa más alta para más estabilidad
+            damping: 25,
+            stiffness: 250,
+            mass: 1,
           })
         }
       } catch (error) {
-        // En caso de error, ir a posición segura
         translateY.value = withTiming(snapPoints.middle, { duration: 300 })
       }
     },
   })
 
-  // MEJORA: Estilo animado con validaciones
+  // Estilo animado con validaciones
   const bottomSheetStyle = useAnimatedStyle(() => {
-    // Validar que translateY.value sea un número válido
     const translateValue =
       typeof translateY.value === "number" && !isNaN(translateY.value)
         ? clamp(translateY.value, ABSOLUTE_MIN, ABSOLUTE_MAX)
@@ -255,14 +278,13 @@ export default function MainScreen() {
     }
   })
 
-  // MEJORA: Funciones de control más seguras
+  // Funciones de control más seguras
   const showAndExpandBottomSheet = () => {
     try {
       setShowBottomSheet(true)
-      setActiveTab("info") // Reset a la pestaña de información
+      setActiveTab("info")
       translateY.value = snapPoints.closed
 
-      // Animación de entrada más segura
       setTimeout(() => {
         translateY.value = withSpring(snapPoints.middle, {
           damping: 25,
@@ -322,14 +344,13 @@ export default function MainScreen() {
   // Función para abrir direcciones
   const handleDirections = () => {
     if (!selectedPlace) return
-    // Aquí puedes implementar la navegación con Google Maps o Apple Maps
     Alert.alert("Direcciones", `Abriendo direcciones para ${selectedPlace.name}`)
   }
 
-  // MEJORA: Función unificada para centrar el carrusel con mejor control
+  // Función unificada para centrar el carrusel con mejor control
   const scrollToIndex = useCallback(
     (index: number, animated = false) => {
-      if (!flatListRef.current || nearbyPlacesList.length === 0) return
+      if (!flatListRef.current || infiniteData.length === 0 || isInfiniteScrolling.current) return
 
       const offsetX = index * TOTAL_ITEM_WIDTH
 
@@ -338,43 +359,43 @@ export default function MainScreen() {
         animated,
       })
     },
-    [nearbyPlacesList, TOTAL_ITEM_WIDTH],
+    [infiniteData, TOTAL_ITEM_WIDTH],
   )
 
-  // MEJORA: Effect para reposicionar el carrusel cuando se cierra el bottom sheet
+  // Effect para reposicionar el carrusel cuando se cierra el bottom sheet
   useEffect(() => {
-    if (!showBottomSheet && needsRepositioning.current && nearbyPlacesList.length > 0) {
-      // Pequeño delay para asegurar que el carrusel esté visible
+    if (!showBottomSheet && needsRepositioning.current && infiniteData.length > 0) {
       const timer = setTimeout(() => {
-        scrollToIndex(currentIndex, false) // Sin animación para posicionamiento inmediato
+        scrollToIndex(currentIndex, false)
         needsRepositioning.current = false
       }, 100)
 
       return () => clearTimeout(timer)
     }
-  }, [showBottomSheet, currentIndex, nearbyPlacesList, scrollToIndex])
+  }, [showBottomSheet, currentIndex, infiniteData, scrollToIndex])
 
-  // Actualizar el scroll cuando cambia el índice actual (solo si no hay bottom sheet)
+  // Actualizar datos infinitos cuando cambia nearbyPlacesList
   useEffect(() => {
-    if (nearbyPlacesList.length > 0 && !isScrollingRef.current && isCardScrollable && !showBottomSheet) {
-      const timer = setTimeout(() => {
-        scrollToIndex(currentIndex, true)
-      }, 100)
-
-      return () => clearTimeout(timer)
+    const newInfiniteData = createInfiniteData(nearbyPlacesList)
+    setInfiniteData(newInfiniteData)
+    
+    if (nearbyPlacesList.length > 0) {
+      const initialInfiniteIndex = getInitialInfiniteIndex(realCurrentIndex, nearbyPlacesList.length)
+      setCurrentIndex(initialInfiniteIndex)
+      
+      // Solo hacer scroll inicial si no hay bottom sheet y es la primera vez
+      if (!showBottomSheet && realCurrentIndex === 0) {
+        setTimeout(() => {
+          if (flatListRef.current) {
+            flatListRef.current.scrollToOffset({
+              offset: initialInfiniteIndex * TOTAL_ITEM_WIDTH,
+              animated: false
+            })
+          }
+        }, 100)
+      }
     }
-  }, [currentIndex, nearbyPlacesList, scrollToIndex, isCardScrollable, showBottomSheet])
-
-  // Centrado adicional cuando se crea la lista por primera vez
-  useEffect(() => {
-    if (nearbyPlacesList.length > 0 && currentIndex === 0 && !showBottomSheet) {
-      const timer = setTimeout(() => {
-        scrollToIndex(0, false)
-      }, 200)
-
-      return () => clearTimeout(timer)
-    }
-  }, [nearbyPlacesList.length, scrollToIndex, showBottomSheet])
+  }, [nearbyPlacesList, createInfiniteData, getInitialInfiniteIndex, realCurrentIndex, showBottomSheet, TOTAL_ITEM_WIDTH])
 
   const [isLoadingLocation, setIsLoadingLocation] = useState(true)
 
@@ -422,22 +443,25 @@ export default function MainScreen() {
   const hideCards = () => {
     setSelectedPlace(null)
     setNearbyPlacesList([])
+    setInfiniteData([])
     setCurrentIndex(0)
+    setRealCurrentIndex(0)
   }
 
-  // MEJORA: Función de reset más específica que no afecta el carrusel innecesariamente
+  // Función de reset más específica que no afecta el carrusel innecesariamente
   const resetMapForNewSearch = () => {
     setPlaces([])
     setSelectedPlace(null)
     setNearbyPlacesList([])
+    setInfiniteData([])
     setPredictions([])
     setShowBottomSheet(false)
     setCurrentIndex(0)
+    setRealCurrentIndex(0)
     setIsCardScrollable(true)
     setActiveTab("info")
-    needsRepositioning.current = false // Reset del flag
+    needsRepositioning.current = false
 
-    // Reset seguro del bottom sheet
     translateY.value = snapPoints.closed
 
     if (location) {
@@ -450,7 +474,7 @@ export default function MainScreen() {
     }
   }
 
-  // MEJORA: Función para cerrar solo el bottom sheet sin afectar el carrusel
+  // Función para cerrar solo el bottom sheet sin afectar el carrusel
   const closeBottomSheetOnly = () => {
     if (showBottomSheet) {
       closeBottomSheet()
@@ -460,7 +484,7 @@ export default function MainScreen() {
   // Nueva función para obtener detalles completos de un lugar
   const fetchFullPlaceDetails = async (place: Place): Promise<Place> => {
     if (!place.place_id || (place.photos && place.photos.length >= 3)) {
-      return place // Ya tiene detalles completos o no tiene place_id
+      return place
     }
 
     try {
@@ -476,9 +500,10 @@ export default function MainScreen() {
       setIsLoadingDetails(false)
     }
 
-    return place // Devuelve el lugar original si hay error
+    return place
   }
 
+  // OPTIMIZACIÓN: Función de búsqueda mejorada con límite de 15
   const handleSearch = async () => {
     if (!searchText || !searchText.trim()) {
       resetMapForNewSearch()
@@ -500,28 +525,27 @@ export default function MainScreen() {
 
     setPlaces(results)
     const sortedPlaces = sortPlacesByDistance(results, location)
-    setNearbyPlacesList(sortedPlaces)
+    
+    // OPTIMIZACIÓN: Limitar a 15 lugares máximo
+    const limitedPlaces = sortedPlaces.slice(0, MAX_PLACES_LIMIT)
+    setNearbyPlacesList(limitedPlaces)
     setIsCardScrollable(true)
 
-    if (sortedPlaces.length > 0) {
-      setCurrentIndex(0)
+    if (limitedPlaces.length > 0) {
+      setRealCurrentIndex(0)
 
       // Obtener detalles completos del primer lugar
-      const detailedPlace = await fetchFullPlaceDetails(sortedPlaces[0])
+      const detailedPlace = await fetchFullPlaceDetails(limitedPlaces[0])
       setSelectedPlace(detailedPlace)
 
       // Actualizar la lista con el lugar detallado
-      if (detailedPlace !== sortedPlaces[0]) {
-        const updatedPlaces = [...sortedPlaces]
+      if (detailedPlace !== limitedPlaces[0]) {
+        const updatedPlaces = [...limitedPlaces]
         updatedPlaces[0] = detailedPlace
         setNearbyPlacesList(updatedPlaces)
       }
 
       centerMapOnPlace(detailedPlace)
-
-      setTimeout(() => {
-        scrollToIndex(0, false)
-      }, 300)
     }
   }
 
@@ -547,7 +571,10 @@ export default function MainScreen() {
 
     if (places.length > 1) {
       const sortedPlaces = sortPlacesByDistance(places, location)
-      const index = sortedPlaces.findIndex(
+      // OPTIMIZACIÓN: Aplicar límite también aquí
+      const limitedPlaces = sortedPlaces.slice(0, MAX_PLACES_LIMIT)
+      
+      const index = limitedPlaces.findIndex(
         (p: Place) =>
           p.geometry.location.lat === place.geometry.location.lat &&
           p.geometry.location.lng === place.geometry.location.lng,
@@ -555,18 +582,18 @@ export default function MainScreen() {
 
       if (index >= 0) {
         // Reemplazar el lugar en la lista con la versión detallada
-        const updatedPlaces = [...sortedPlaces]
+        const updatedPlaces = [...limitedPlaces]
         updatedPlaces[index] = detailedPlace
 
         setNearbyPlacesList(updatedPlaces)
-        setCurrentIndex(index)
+        setRealCurrentIndex(index)
         setSelectedPlace(detailedPlace)
         centerMapOnPlace(detailedPlace)
         setIsCardScrollable(true)
       }
     } else {
       setNearbyPlacesList([detailedPlace])
-      setCurrentIndex(0)
+      setRealCurrentIndex(0)
       setSelectedPlace(detailedPlace)
       centerMapOnPlace(detailedPlace)
       setIsCardScrollable(false)
@@ -583,7 +610,7 @@ export default function MainScreen() {
     if (place) {
       setPlaces([place])
       setNearbyPlacesList([place])
-      setCurrentIndex(0)
+      setRealCurrentIndex(0)
       setSelectedPlace(place)
       setIsCardScrollable(false)
 
@@ -612,29 +639,58 @@ export default function MainScreen() {
     isScrollingRef.current = true
   }
 
-  // Obtener info completa al cambiar de lugar en el carrusel
+  // OPTIMIZACIÓN: Función de scroll mejorada con menos cálculos
   const handleScrollEnd = async (event: any) => {
-    if (nearbyPlacesList.length <= 1 || !isCardScrollable) return
+    if (nearbyPlacesList.length <= 1 || !isCardScrollable || isInfiniteScrolling.current) {
+      isScrollingRef.current = false
+      return
+    }
 
     const offsetX = event.nativeEvent.contentOffset.x
-    const index = Math.round(offsetX / TOTAL_ITEM_WIDTH)
+    const newInfiniteIndex = Math.round(offsetX / TOTAL_ITEM_WIDTH)
+    const newRealIndex = getRealIndex(newInfiniteIndex, nearbyPlacesList.length)
 
-    if (index !== currentIndex && index >= 0 && index < nearbyPlacesList.length) {
-      setCurrentIndex(index)
-      const newPlace = nearbyPlacesList[index]
+    // Solo actualizar el estado si realmente cambió
+    if (newRealIndex !== realCurrentIndex) {
+      setRealCurrentIndex(newRealIndex)
+      setCurrentIndex(newInfiniteIndex)
+      
+      const newPlace = nearbyPlacesList[newRealIndex]
+      if (newPlace) {
+        // Obtener detalles completos del lugar seleccionado
+        const detailedPlace = await fetchFullPlaceDetails(newPlace)
+        
+        // Si hay info nueva, actualizar la lista
+        if (detailedPlace !== newPlace) {
+          const updatedPlaces = [...nearbyPlacesList]
+          updatedPlaces[newRealIndex] = detailedPlace
+          setNearbyPlacesList(updatedPlaces)
+        }
 
-      // Obtener info completa del lugar seleccionado
-      const detailedPlace = await fetchFullPlaceDetails(newPlace)
-
-      // Si hay info nueva, actualizar la lista
-      if (detailedPlace !== newPlace) {
-        const updatedPlaces = [...nearbyPlacesList]
-        updatedPlaces[index] = detailedPlace
-        setNearbyPlacesList(updatedPlaces)
+        setSelectedPlace(detailedPlace)
+        centerMapOnPlace(detailedPlace)
       }
+    }
 
-      setSelectedPlace(detailedPlace)
-      centerMapOnPlace(detailedPlace)
+    // OPTIMIZACIÓN: Reposicionar con menos copias
+    const dataLength = nearbyPlacesList.length
+    const totalLength = infiniteData.length
+    
+    if (newInfiniteIndex <= dataLength || newInfiniteIndex >= totalLength - dataLength) {
+      isInfiniteScrolling.current = true
+      const newPosition = getInitialInfiniteIndex(newRealIndex, dataLength)
+      
+      // Reposicionar sin animación para mantener el efecto infinito
+      setTimeout(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToOffset({
+            offset: newPosition * TOTAL_ITEM_WIDTH,
+            animated: false
+          })
+          setCurrentIndex(newPosition)
+        }
+        isInfiniteScrolling.current = false
+      }, 50)
     }
 
     isScrollingRef.current = false
@@ -643,18 +699,15 @@ export default function MainScreen() {
   // Función modificada para manejar la apertura del visor de imágenes
   const handleOpenImageViewer = (index: number) => {
     if (selectedPlace?.photos && selectedPlace.photos.length > 0) {
-      // Guardar las fotos en el estado para que el visor las use
       setViewerPhotos(selectedPlace.photos)
       setSelectedImageIndex(index)
-
-      // Mostrar el visor de imágenes
       setShowImageViewer(true)
     }
   }
 
-  // MEJORA: Renderizar el carrusel con mejor control de posicionamiento
+  // OPTIMIZACIÓN: Renderizar el carrusel con configuraciones mejoradas
   const renderCarousel = () => {
-    if (!selectedPlace || isKeyboardVisible || showBottomSheet || nearbyPlacesList.length === 0) {
+    if (!selectedPlace || isKeyboardVisible || showBottomSheet || infiniteData.length === 0) {
       return null
     }
 
@@ -663,9 +716,9 @@ export default function MainScreen() {
         <FlatList
           ref={flatListRef}
           horizontal
-          data={nearbyPlacesList}
+          data={infiniteData}
           keyExtractor={(item, index) =>
-            `carousel-${index}-${item.geometry.location.lat}-${item.geometry.location.lng}`
+            `carousel-${index}-${item._infiniteId || item.place_id || Math.random()}`
           }
           getItemLayout={(data, index) => ({
             length: TOTAL_ITEM_WIDTH,
@@ -673,7 +726,8 @@ export default function MainScreen() {
             index,
           })}
           renderItem={({ item, index }) => {
-            const isSelected = index === currentIndex
+            const realIndex = getRealIndex(index, nearbyPlacesList.length)
+            const isSelected = realIndex === realCurrentIndex
 
             return (
               <View
@@ -685,10 +739,12 @@ export default function MainScreen() {
               >
                 <TouchableOpacity
                   onPress={() => {
-                    if (index !== currentIndex && isCardScrollable) {
+                    if (realIndex !== realCurrentIndex && isCardScrollable) {
+                      // NO hacer scroll automático, solo actualizar el estado
+                      setRealCurrentIndex(realIndex)
                       setCurrentIndex(index)
-                      setSelectedPlace(nearbyPlacesList[index])
-                      centerMapOnPlace(nearbyPlacesList[index])
+                      setSelectedPlace(nearbyPlacesList[realIndex])
+                      centerMapOnPlace(nearbyPlacesList[realIndex])
                     } else {
                       handleSelectedCardPress()
                     }
@@ -785,9 +841,11 @@ export default function MainScreen() {
           snapToAlignment="center"
           decelerationRate={0.8}
           disableIntervalMomentum={true}
-          snapToOffsets={nearbyPlacesList.map((_, index) => index * TOTAL_ITEM_WIDTH)}
+          // OPTIMIZACIÓN: snapToOffsets calculado más eficientemente
+          snapToOffsets={infiniteData.map((_, index) => index * TOTAL_ITEM_WIDTH)}
           contentContainerStyle={{
-            paddingHorizontal: SIDE_SPACING,
+            paddingLeft: SIDE_SPACING,
+            paddingRight: SIDE_SPACING,
           }}
           scrollEnabled={isCardScrollable}
           onScrollBeginDrag={handleScrollBegin}
@@ -800,12 +858,14 @@ export default function MainScreen() {
               }
             })
           }}
-          // MEJORA: Asegurar que el carrusel mantenga su posición inicial
+          // OPTIMIZACIÓN: Configuraciones mejoradas para 15 elementos
           initialScrollIndex={currentIndex}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-            autoscrollToTopThreshold: 10,
-          }}
+          removeClippedSubviews={true} // Activado para mejor rendimiento con menos elementos
+          windowSize={8} // Reducido para 15 elementos
+          maxToRenderPerBatch={4} // Reducido
+          updateCellsBatchingPeriod={100} // Aumentado para menos actualizaciones
+          pagingEnabled={false}
+          bounces={false}
         />
       </View>
     )
@@ -825,7 +885,6 @@ export default function MainScreen() {
       <StatusBar style="light" backgroundColor="#1a1a1a" />
       <TouchableWithoutFeedback
         onPress={(event) => {
-          // No cerrar si el usuario presiona en el carrusel
           const touchY = event.nativeEvent.pageY
           if (touchY > height * 0.6) return
 
@@ -861,13 +920,13 @@ export default function MainScreen() {
               mapPadding={{
                 top: 0,
                 right: 0,
-                bottom: isKeyboardVisible ? 0 : height * 0.3, // Menos padding y dinámico
+                bottom: isKeyboardVisible ? 0 : height * 0.3,
                 left: 0,
-              }} // Ajustado para dar más espacio a las tarjetas
+              }}
               onPress={() => {
                 if (isDraggingMapRef.current) {
                   isDraggingMapRef.current = false
-                  return // 👈 No cerrar si se está arrastrando
+                  return
                 }
 
                 if (markerPressRef.current) {
@@ -880,9 +939,9 @@ export default function MainScreen() {
                   }
                 }
               }}
-
             >
-              {places.map((place) => (
+              {/* OPTIMIZACIÓN: Solo mostrar los primeros 15 marcadores */}
+              {places.slice(0, MAX_PLACES_LIMIT).map((place) => (
                 <Marker
                   key={uuidv4()}
                   coordinate={{
@@ -956,7 +1015,7 @@ export default function MainScreen() {
 
           {renderCarousel()}
 
-          {/* Bottom Sheet nuevo */}
+          {/* Bottom Sheet */}
           {showBottomSheet && (
             <PanGestureHandler onGestureEvent={gestureHandler}>
               <Animated.View
