@@ -7,21 +7,75 @@ export const GOOGLE_API_KEY = "AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4"
 
 // Interfaces
 export interface Place {
-  place_id?: string
+  place_id: string
   name: string
-  rating: number
-  user_ratings_total: number
   geometry: {
     location: {
       lat: number
       lng: number
     }
   }
-  photos?: Array<{
-    photo_reference: string
-    height: number
-    width: number
-  }>
+  rating?: number
+  user_ratings_total?: number
+  vicinity?: string
+  photos?: { photo_reference: string; height: number; width: number }[]
+}
+// 🔍 Búsqueda filtrada por tipo de restricción (sin TACC, vegano, etc.)
+export const searchFilteredRestaurants = async (
+  filters: string[],
+  latitude: number,
+  longitude: number,
+  radius = 3000,
+): Promise<Place[]> => {
+  try {
+    // Crear términos de búsqueda basados en los filtros
+    const searchTerms = filters
+      .map((filter) => {
+        switch (filter.toLowerCase()) {
+          case "sin tacc":
+          case "celiaco":
+            return "gluten free celiac sin tacc celiaco"
+          case "vegano":
+            return "vegan vegano plant based"
+          case "vegetariano":
+            return "vegetarian vegetariano"
+          case "kosher":
+            return "kosher"
+          case "halal":
+            return "halal"
+          default:
+            return filter
+        }
+      })
+      .join(" ")
+
+    const query = `restaurant ${searchTerms}`
+
+    const response = await axios.get("https://maps.googleapis.com/maps/api/place/textsearch/json", {
+      params: {
+        query,
+        location: `${latitude},${longitude}`,
+        radius,
+        key: GOOGLE_API_KEY,
+      },
+    })
+
+    const results: Place[] = response.data.results || []
+    return results
+  } catch (error) {
+    console.error("Error buscando lugares filtrados:", error)
+    return []
+  }
+}
+
+// Nueva función para buscar por un filtro específico
+export const searchByDietaryFilter = async (
+  filterType: string,
+  latitude: number,
+  longitude: number,
+  radius = 3000,
+): Promise<Place[]> => {
+  return searchFilteredRestaurants([filterType], latitude, longitude, radius)
 }
 
 // Helper functions

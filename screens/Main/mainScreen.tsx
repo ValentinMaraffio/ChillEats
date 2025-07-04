@@ -34,6 +34,7 @@ import {
   calculateDistance,
   type Place,
   getPhotoUrl,
+  searchFilteredRestaurants,
 } from "./mainBackend"
 import { useFavorites } from "../../context/favoritesContext"
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
@@ -48,7 +49,7 @@ import Animated, {
 } from "react-native-reanimated"
 import { PanGestureHandler } from "react-native-gesture-handler"
 import ImageViewer from "../../components/imageViewer"
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from "expo-status-bar"
 
 const { width, height } = Dimensions.get("window")
 
@@ -124,28 +125,38 @@ export default function MainScreen() {
   const ABSOLUTE_MIN = 0
   const ABSOLUTE_MAX = height + 100
 
+  // Estados para filtros dietéticos
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([])
+  const [isFilterActive, setIsFilterActive] = useState(false)
+
   // OPTIMIZACIÓN: Función mejorada para crear datos infinitos con menos copias
   const createInfiniteData = useCallback((data: Place[]) => {
     if (data.length === 0) return []
     if (data.length === 1) return data // Si solo hay un elemento, no necesitamos duplicar
-    
+
     // OPTIMIZACIÓN: Usar menos copias para reducir memoria
     const copies = INFINITE_COPIES
     const infiniteArray: Place[] = []
-    
+
     // Agregar copias al inicio
     for (let i = 0; i < copies; i++) {
-      infiniteArray.push(...data.map(place => ({ ...place, _infiniteId: `start-${i}-${place.place_id || Math.random()}` })))
+      infiniteArray.push(
+        ...data.map((place) => ({ ...place, _infiniteId: `start-${i}-${place.place_id || Math.random()}` })),
+      )
     }
-    
+
     // Agregar datos originales
-    infiniteArray.push(...data.map(place => ({ ...place, _infiniteId: `original-${place.place_id || Math.random()}` })))
-    
+    infiniteArray.push(
+      ...data.map((place) => ({ ...place, _infiniteId: `original-${place.place_id || Math.random()}` })),
+    )
+
     // Agregar copias al final
     for (let i = 0; i < copies; i++) {
-      infiniteArray.push(...data.map(place => ({ ...place, _infiniteId: `end-${i}-${place.place_id || Math.random()}` })))
+      infiniteArray.push(
+        ...data.map((place) => ({ ...place, _infiniteId: `end-${i}-${place.place_id || Math.random()}` })),
+      )
     }
-    
+
     return infiniteArray
   }, [])
 
@@ -159,9 +170,9 @@ export default function MainScreen() {
   const getInitialInfiniteIndex = useCallback((realIndex: number, dataLength: number) => {
     if (dataLength === 0) return 0
     if (dataLength === 1) return 0
-    
+
     const copies = INFINITE_COPIES
-    return (copies * dataLength) + realIndex
+    return copies * dataLength + realIndex
   }, [])
 
   // Función para obtener el snap point más cercano con validación
@@ -378,24 +389,31 @@ export default function MainScreen() {
   useEffect(() => {
     const newInfiniteData = createInfiniteData(nearbyPlacesList)
     setInfiniteData(newInfiniteData)
-    
+
     if (nearbyPlacesList.length > 0) {
       const initialInfiniteIndex = getInitialInfiniteIndex(realCurrentIndex, nearbyPlacesList.length)
       setCurrentIndex(initialInfiniteIndex)
-      
+
       // Solo hacer scroll inicial si no hay bottom sheet y es la primera vez
       if (!showBottomSheet && realCurrentIndex === 0) {
         setTimeout(() => {
           if (flatListRef.current) {
             flatListRef.current.scrollToOffset({
               offset: initialInfiniteIndex * TOTAL_ITEM_WIDTH,
-              animated: false
+              animated: false,
             })
           }
         }, 100)
       }
     }
-  }, [nearbyPlacesList, createInfiniteData, getInitialInfiniteIndex, realCurrentIndex, showBottomSheet, TOTAL_ITEM_WIDTH])
+  }, [
+    nearbyPlacesList,
+    createInfiniteData,
+    getInitialInfiniteIndex,
+    realCurrentIndex,
+    showBottomSheet,
+    TOTAL_ITEM_WIDTH,
+  ])
 
   const [isLoadingLocation, setIsLoadingLocation] = useState(true)
 
@@ -460,6 +478,8 @@ export default function MainScreen() {
     setRealCurrentIndex(0)
     setIsCardScrollable(true)
     setActiveTab("info")
+    setSelectedFilters([]) // Reset filters
+    setIsFilterActive(false) // Reset filter state
     needsRepositioning.current = false
 
     translateY.value = snapPoints.closed
@@ -525,8 +545,62 @@ export default function MainScreen() {
 
     setPlaces(results)
     const sortedPlaces = sortPlacesByDistance(results, location)
-    
+
     // OPTIMIZACIÓN: Limitar a 15 lugares máximo
+    const limitedPlaces = sortedPlaces.slice(0, MAX_PLACES_LIMIT)
+    setNearbyPlacesList(limitedPlaces)
+    setIsCardScrollable(true)
+
+    if (limitedPlaces.length > 0) {
+      setRealCurrentIndex(0)
+
+      // Obtener detalles completos del primer lugar
+      const detailedPlace = await fetchFullPlaceDetails(limitedPlaces[0])
+      setSelectedPlace(detailedPlace)
+
+      // Actualizar la lista con el lugar detallado
+      if (detailedPlace !== limitedPlaces[0]) {
+        const updatedPlaces = [...limitedPlaces]
+        updatedPlaces[0] = detailedPlace
+        setNearbyPlacesList(updatedPlaces)
+      }
+
+      centerMapOnPlace(detailedPlace)
+    }
+  }
+
+  // Nueva función para manejar búsquedas por filtros dietéticos
+  const handleDietaryFilterSearch = async (filterType: string) => {
+    if (!location) return
+
+    closeBottomSheetOnly()
+
+    // Toggle filter selection
+    let newFilters: string[]
+    if (selectedFilters.includes(filterType)) {
+      newFilters = selectedFilters.filter((f) => f !== filterType)
+    } else {
+      newFilters = [...selectedFilters, filterType]
+    }
+
+    setSelectedFilters(newFilters)
+
+    if (newFilters.length === 0) {
+      // Si no hay filtros, resetear
+      resetMapForNewSearch()
+      setIsFilterActive(false)
+      return
+    }
+
+    setIsFilterActive(true)
+
+    // Buscar con los filtros seleccionados
+    const results = await searchFilteredRestaurants(newFilters, location.latitude, location.longitude)
+
+    setPlaces(results)
+    const sortedPlaces = sortPlacesByDistance(results, location)
+
+    // Limitar a 15 lugares máximo
     const limitedPlaces = sortedPlaces.slice(0, MAX_PLACES_LIMIT)
     setNearbyPlacesList(limitedPlaces)
     setIsCardScrollable(true)
@@ -573,7 +647,7 @@ export default function MainScreen() {
       const sortedPlaces = sortPlacesByDistance(places, location)
       // OPTIMIZACIÓN: Aplicar límite también aquí
       const limitedPlaces = sortedPlaces.slice(0, MAX_PLACES_LIMIT)
-      
+
       const index = limitedPlaces.findIndex(
         (p: Place) =>
           p.geometry.location.lat === place.geometry.location.lat &&
@@ -654,12 +728,12 @@ export default function MainScreen() {
     if (newRealIndex !== realCurrentIndex) {
       setRealCurrentIndex(newRealIndex)
       setCurrentIndex(newInfiniteIndex)
-      
+
       const newPlace = nearbyPlacesList[newRealIndex]
       if (newPlace) {
         // Obtener detalles completos del lugar seleccionado
         const detailedPlace = await fetchFullPlaceDetails(newPlace)
-        
+
         // Si hay info nueva, actualizar la lista
         if (detailedPlace !== newPlace) {
           const updatedPlaces = [...nearbyPlacesList]
@@ -675,17 +749,17 @@ export default function MainScreen() {
     // OPTIMIZACIÓN: Reposicionar con menos copias
     const dataLength = nearbyPlacesList.length
     const totalLength = infiniteData.length
-    
+
     if (newInfiniteIndex <= dataLength || newInfiniteIndex >= totalLength - dataLength) {
       isInfiniteScrolling.current = true
       const newPosition = getInitialInfiniteIndex(newRealIndex, dataLength)
-      
+
       // Reposicionar sin animación para mantener el efecto infinito
       setTimeout(() => {
         if (flatListRef.current) {
           flatListRef.current.scrollToOffset({
             offset: newPosition * TOTAL_ITEM_WIDTH,
-            animated: false
+            animated: false,
           })
           setCurrentIndex(newPosition)
         }
@@ -717,9 +791,7 @@ export default function MainScreen() {
           ref={flatListRef}
           horizontal
           data={infiniteData}
-          keyExtractor={(item, index) =>
-            `carousel-${index}-${item._infiniteId || item.place_id || Math.random()}`
-          }
+          keyExtractor={(item, index) => `carousel-${index}-${item._infiniteId || item.place_id || Math.random()}`}
           getItemLayout={(data, index) => ({
             length: TOTAL_ITEM_WIDTH,
             offset: TOTAL_ITEM_WIDTH * index,
@@ -900,7 +972,9 @@ export default function MainScreen() {
         <View style={{ flex: 1 }}>
           {location && (
             <MapView
-              onPanDrag={() => {isDraggingMapRef.current = true}}
+              onPanDrag={() => {
+                isDraggingMapRef.current = true
+              }}
               ref={mapRef}
               provider={PROVIDER_GOOGLE}
               style={StyleSheet.absoluteFill}
@@ -1004,14 +1078,74 @@ export default function MainScreen() {
 
             {!isKeyboardVisible && (
               <View style={styles.filters}>
-                {["Localidad", "Limitación", "Precio", "Local"].map((filter) => (
-                  <TouchableOpacity key={uuidv4()} style={styles.filterButton}>
-                    <Text style={styles.filterText}>{filter}</Text>
-                  </TouchableOpacity>
-                ))}
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("sin tacc") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("sin tacc")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("sin tacc") && styles.activeFilterText]}>
+                    Sin TACC
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("vegano") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("vegano")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("vegano") && styles.activeFilterText]}>
+                    Vegano
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("vegetariano") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("vegetariano")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("vegetariano") && styles.activeFilterText]}>
+                    Vegetariano
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("kosher") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("kosher")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("kosher") && styles.activeFilterText]}>
+                    Kosher
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
+
+          {isFilterActive && selectedFilters.length > 0 && (
+            <View>
+            
+                
+                <View style={styles.activeFiltersList}>
+                  {selectedFilters.map((filter) => (
+                    <TouchableOpacity
+                      key={filter}
+                      
+                      onPress={() => handleDietaryFilterSearch(filter)}
+                    >
+                      
+                      <Text style={styles.activeFilterChipRemove}>×</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={styles.clearFiltersButton}
+                  onPress={() => {
+                    setSelectedFilters([])
+                    setIsFilterActive(false)
+                    resetMapForNewSearch()
+                  }}
+                >
+                
+                </TouchableOpacity>
+              
+            </View>
+          )}
 
           {renderCarousel()}
 
