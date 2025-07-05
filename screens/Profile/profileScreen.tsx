@@ -5,8 +5,13 @@ import { useAuth } from "../../context/authContext"
 import { handleUserLogout, mockReviews } from "./profileBackend"
 import { styles } from "./profileStyles"
 import { widthPercentageToDP as wp } from "react-native-responsive-screen"
+import { useNavigation } from "@react-navigation/native"
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack"
+import type { RootStackParamList } from "../../types/navigation"
+import { SafeAreaView } from "react-native-safe-area-context"
 
-export default function ProfileScreen({ navigation }: any) {
+
+export default function ProfileScreen() {
   const { user, logout } = useAuth()
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false)
   const [activeTab, setActiveTab] = useState("profile")
@@ -15,10 +20,15 @@ export default function ProfileScreen({ navigation }: any) {
   const [starFilter, setStarFilter] = useState(0)
   const [distanceFilter, setDistanceFilter] = useState(0)
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
 
-  const handleLogout = () => {
-    handleUserLogout(logout, navigation)
-  }
+const handleLogout = async () => {
+  await logout()
+  navigation.reset({
+    index: 0,
+    routes: [{ name: "MainTabs", params: { screen: "User" } }],
+  })
+}
 
   const handleEditProfile = () => {
     Alert.alert("Editar perfil", "Esta funcionalidad estará disponible próximamente")
@@ -72,8 +82,8 @@ export default function ProfileScreen({ navigation }: any) {
     return <View style={{ flexDirection: "row" }}>{stars}</View>
   }
 
-  return (
-    <View style={styles.container}>
+  return ( 
+    <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
 
@@ -164,18 +174,29 @@ export default function ProfileScreen({ navigation }: any) {
               <Text style={styles.filtersTitle}>Filtrar por:</Text>
 
               <View style={styles.filterGroup}>
-                <Text style={styles.filterGroupTitle}>Estrellas:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.starsFilter}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity
-                      key={`star-${star}`}
-                      style={[styles.starButton, starFilter === star && styles.activeStarButton]}
-                      onPress={() => filterReviewsByStars(star)}
-                    >
-                      <Text style={styles.starButtonText}>{star} ⭐</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.filterGroupTitle}>Estrellas:</Text>
+                  <View style={{ flexDirection: "row", marginLeft: 8 }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <TouchableOpacity
+                        key={star}
+                        onPress={() => {
+                          const newFilter = starFilter === star ? 0 : star
+                          setStarFilter(newFilter)
+                          const filtered = newFilter === 0 ? reviews : reviews.filter((review) => review.rating === newFilter)
+                          setFilteredReviews(filtered)
+                        }}
+                        style={{ marginRight: 6 }}
+                      >
+                        <FontAwesome
+                          name="star"
+                          size={28}
+                          color={star <= starFilter ? "#FFD700" : "#ccc"}
+                         />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
               </View>
 
               <View style={styles.filterGroup}>
@@ -232,6 +253,6 @@ export default function ProfileScreen({ navigation }: any) {
       </ScrollView>
 
       
-    </View>
+    </SafeAreaView>
   )
 }

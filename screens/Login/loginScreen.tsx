@@ -35,18 +35,26 @@ export default function LoginScreen() {
   // Modified to handle the login directly in this component
   const handleLogin = async () => {
     try {
-      const res = await axios.post('http://172.16.4.117:8000/api/auth/signin', { email, password });
+      const res = await axios.post('http://192.168.0.18:8000/api/auth/signin', { email, password });
       const token = res.data.token;
   
       await Promise.resolve(login(token));
 
           const decoded = parseJwt(token);
+      
+      navigation.navigate("MainTabs", { screen: "User" });
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs", params: { screen: "User" } }],
+      })
 
   
-      navigation.navigate('Profile', {
+      /*navigation.navigate('Profile', {
         name: parseJwt(token).name,
         email: parseJwt(token).email,
-      });
+      });*/
+
     } catch (error: any) {
       const data = error.response?.data;
       if (data?.requiresVerification) {

@@ -15,7 +15,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: wp("5%"),
-    paddingTop: hp("6%"),
+
     paddingBottom: hp("2%"),
   },
   headerTitle: {
@@ -204,7 +204,7 @@ export const styles = StyleSheet.create({
   filterGroupTitle: {
     fontSize: wp("3.5%"),
     color: "#666",
-    marginBottom: hp("0.5%"),
+    marginBottom: hp("0.5%"),   
   },
   starsFilter: {
     flexDirection: "row",
@@ -217,7 +217,7 @@ export const styles = StyleSheet.create({
     marginRight: wp("2%"),
   },
   activeStarButton: {
-    backgroundColor: "#FFD700",
+    backgroundColor: "#FFA500",
   },
   starButtonText: {
     fontSize: wp("3.5%"),

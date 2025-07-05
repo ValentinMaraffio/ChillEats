@@ -1,4 +1,3 @@
-"use client"
 import { FontAwesome } from "@expo/vector-icons"
 import { useRef, useState } from "react"
 import {
@@ -43,7 +42,7 @@ export default function ResetPasswordScreen() {
 
   const handleValidateCode = async () => {
     try {
-      const response = await axios.post("http://192.168.185.194:8000/api/auth/validate-forgot-password-code", {
+      const response = await axios.post("http://192.168.0.18:8000/api/auth/validate-forgot-password-code", {
         email,
         providedCode: code,
       })
@@ -57,14 +56,20 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     try {
-      await axios.patch("http://192.168.185.194:8000/api/auth/verify-forgot-password-code", {
+      await axios.patch("http://192.168.0.18:8000/api/auth/verify-forgot-password-code", {
         email,
         providedCode: code,
         newPassword,
       })
       setShowModal(false)
       Alert.alert("Éxito", "Contraseña actualizada")
-      navigation.navigate("Login")
+      navigation.reset({
+        index: 1,
+        routes: [
+          { name: "MainTabs", params: { screen: "User" } }, 
+          { name: "Login" }
+        ],
+      })
     } catch (err: any) {
       Alert.alert("Error", err?.response?.data?.message || "No se pudo cambiar la contraseña")
     }
@@ -76,7 +81,7 @@ export default function ResetPasswordScreen() {
         colors={['#ff4500', '#FF9500']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={{ flex: 1 }} // <- Usamos flex: 1 directamente
+        style={{ flex: 1 }} 
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -87,7 +92,18 @@ export default function ResetPasswordScreen() {
   
             <Text style={styles.label}>Ingresa el código (6 dígitos):</Text>
   
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Login")}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() =>
+                navigation.reset({
+                  index: 1,
+                  routes: [
+                    { name: "MainTabs", params: { screen: "User" } },
+                    { name: "Login" },
+                  ],
+                })
+              }
+            >
               <FontAwesome name="arrow-left" size={24} color="white" />
             </TouchableOpacity>
   
@@ -149,9 +165,20 @@ export default function ResetPasswordScreen() {
                     <Text style={styles.buttonText}>Guardar</Text>
                   </TouchableOpacity>
   
-                  <Pressable onPress={() => navigation.navigate("Login")}>
-                    <Text style={styles.forgotText}>Cancelar</Text>
-                  </Pressable>
+                  <Pressable
+                    onPress={() =>
+                    navigation.reset({
+                      index: 1,
+                      routes: [
+                        { name: "MainTabs", params: { screen: "User" } },
+                        { name: "Login" },
+                      ],
+                    })
+                  }
+                >
+                  <Text style={styles.forgotText}>Cancelar</Text>
+                </Pressable>
+
                 </View>
               </View>
             </Modal>

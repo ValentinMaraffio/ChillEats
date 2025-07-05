@@ -66,9 +66,11 @@ export default function VerificationScreen() {
       await login(result.token)
       const userData = parseJwt(result.token)
 
-      navigation.navigate("Profile", {
-        name: userData.name,
-        email: userData.email,
+      navigation.navigate("MainTabs", { screen: "User" })
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs", params: { screen: "User" } }],
       })
     }
   }
@@ -94,7 +96,18 @@ export default function VerificationScreen() {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
         {/* Botón volver */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Login")}>
+        
+        <TouchableOpacity
+          style={styles.backButton}
+            onPress={() =>
+            navigation.reset({
+              index: 0,
+              routes: [
+                { name: "MainTabs", params: { screen: "User" } },
+              ],
+            })
+          }
+        >
           <FontAwesome name="arrow-left" size={24} color="white" />
         </TouchableOpacity>
 

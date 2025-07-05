@@ -16,7 +16,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSendCode = async () => {
     try {
-      await axios.patch('http://172.16.4.117:8000/api/auth/send-forgot-password-code', { email });
+      await axios.patch('http://192.168.0.18:8000/api/auth/send-forgot-password-code', { email });
       Alert.alert('Éxito', 'Código enviado a tu correo');
       navigation.navigate('ResetPassword', { email });
     } catch (err: any) {
@@ -32,9 +32,22 @@ export default function ForgotPasswordScreen() {
       end={{ x: 0, y: 1 }}
     >
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.navigate("Login")}>
-          <FontAwesome name="arrow-left" size={24} color="white" />
-        </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() =>
+          navigation.reset({
+            index: 1,
+            routes: [
+              { name: "MainTabs", params: { screen: "User" } },
+              { name: "Login" },
+            ],
+          })
+        }
+      >
+        <FontAwesome name="arrow-left" size={24} color="white" />
+      </TouchableOpacity>
+    
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.innerContainer}>
             <Text style={styles.title}>Recuperar Contraseña</Text>
