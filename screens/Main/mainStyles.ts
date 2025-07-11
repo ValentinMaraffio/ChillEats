@@ -56,14 +56,17 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: "#333",
   },
-  filters: {
-    flexDirection: "row",
+  filtersScrollView: {
     marginTop: 15,
+  },
+  filtersContainer: {
+    paddingHorizontal: 20,
     gap: 10,
+    paddingRight: 40, // Extra padding at the end
   },
   filterButton: {
     backgroundColor: "white",
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     shadowColor: "#000",
@@ -71,6 +74,7 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.22,
     shadowRadius: 2.22,
     elevation: 3,
+    minWidth: 80, // Ensure consistent button sizes
   },
   activeFilterButton: {
     backgroundColor: "#ff9500",
@@ -114,7 +118,7 @@ export const styles = StyleSheet.create({
   },
   floatingButtons: {
     position: "absolute",
-    bottom: height * 0.35,
+    bottom: height * 0.1,
     right: 20,
     gap: 10,
   },

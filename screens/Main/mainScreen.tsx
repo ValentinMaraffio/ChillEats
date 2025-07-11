@@ -18,6 +18,7 @@ import {
   Animated as RNAnimated,
   Share,
   Image,
+  ScrollView, // Add this import
 } from "react-native"
 import MapView, { PROVIDER_GOOGLE, Marker, type Camera } from "react-native-maps"
 import type * as Location from "expo-location"
@@ -182,6 +183,7 @@ export default function MainScreen() {
     const distances = [
       { point: snapPoints.expanded, distance: Math.abs(safePosition - snapPoints.expanded) },
       { point: snapPoints.middle, distance: Math.abs(safePosition - snapPoints.middle) },
+      { point: snapPoints.closed, distance: Math.abs(safePosition - snapPoints.middle) },
       { point: snapPoints.closed, distance: Math.abs(safePosition - snapPoints.closed) },
     ]
     return distances.reduce((closest, current) => (current.distance < closest.distance ? current : closest)).point
@@ -1077,13 +1079,18 @@ export default function MainScreen() {
             </View>
 
             {!isKeyboardVisible && (
-              <View style={styles.filters}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filtersContainer}
+                style={styles.filtersScrollView}
+              >
                 <TouchableOpacity
                   style={[styles.filterButton, selectedFilters.includes("sin tacc") && styles.activeFilterButton]}
                   onPress={() => handleDietaryFilterSearch("sin tacc")}
                 >
                   <Text style={[styles.filterText, selectedFilters.includes("sin tacc") && styles.activeFilterText]}>
-                    Sin TACC
+                    Sin TACC 🌾
                   </Text>
                 </TouchableOpacity>
 
@@ -1092,7 +1099,7 @@ export default function MainScreen() {
                   onPress={() => handleDietaryFilterSearch("vegano")}
                 >
                   <Text style={[styles.filterText, selectedFilters.includes("vegano") && styles.activeFilterText]}>
-                    Vegano
+                    Vegano 🥬
                   </Text>
                 </TouchableOpacity>
 
@@ -1101,7 +1108,7 @@ export default function MainScreen() {
                   onPress={() => handleDietaryFilterSearch("vegetariano")}
                 >
                   <Text style={[styles.filterText, selectedFilters.includes("vegetariano") && styles.activeFilterText]}>
-                    Vegetariano
+                    Vegetariano 🥕
                   </Text>
                 </TouchableOpacity>
 
@@ -1110,40 +1117,57 @@ export default function MainScreen() {
                   onPress={() => handleDietaryFilterSearch("kosher")}
                 >
                   <Text style={[styles.filterText, selectedFilters.includes("kosher") && styles.activeFilterText]}>
-                    Kosher
+                    Kosher 🫘
                   </Text>
                 </TouchableOpacity>
-              </View>
+
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("halal") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("halal")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("halal") && styles.activeFilterText]}>
+                    Halal 🥩
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("keto") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("keto")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("keto") && styles.activeFilterText]}>
+                    Keto 🥑
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.filterButton, selectedFilters.includes("paleo") && styles.activeFilterButton]}
+                  onPress={() => handleDietaryFilterSearch("paleo")}
+                >
+                  <Text style={[styles.filterText, selectedFilters.includes("paleo") && styles.activeFilterText]}>
+                    Paleo 🦴
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
             )}
           </View>
 
           {isFilterActive && selectedFilters.length > 0 && (
             <View>
-            
-                
-                <View style={styles.activeFiltersList}>
-                  {selectedFilters.map((filter) => (
-                    <TouchableOpacity
-                      key={filter}
-                      
-                      onPress={() => handleDietaryFilterSearch(filter)}
-                    >
-                      
-                      <Text style={styles.activeFilterChipRemove}>×</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  style={styles.clearFiltersButton}
-                  onPress={() => {
-                    setSelectedFilters([])
-                    setIsFilterActive(false)
-                    resetMapForNewSearch()
-                  }}
-                >
-                
-                </TouchableOpacity>
-              
+              <View style={styles.activeFiltersList}>
+                {selectedFilters.map((filter) => (
+                  <TouchableOpacity key={filter} onPress={() => handleDietaryFilterSearch(filter)}>
+                    <Text style={styles.activeFilterChipRemove}>×</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={styles.clearFiltersButton}
+                onPress={() => {
+                  setSelectedFilters([])
+                  setIsFilterActive(false)
+                  resetMapForNewSearch()
+                }}
+              ></TouchableOpacity>
             </View>
           )}
 
