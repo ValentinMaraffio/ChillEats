@@ -3,7 +3,7 @@ import * as Location from "expo-location"
 import { Alert } from "react-native"
 
 // Constants
-export const GOOGLE_API_KEY = "AIzaSyAvNZmCOm06WsGoGkDJI9aNR2RWS0T2agQ"
+export const GOOGLE_API_KEY = "AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4"
 
 // Interfaces
 export interface Place {
