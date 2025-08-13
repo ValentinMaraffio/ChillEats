@@ -13,8 +13,10 @@ export const handleUserLogout = (logout: () => void, navigation: any) => {
   })
 }
 
+
+
 // Mock reviews data for demonstration
-export const mockReviews = [
+/*export const mockReviews = [
   {
     id: "1",
     placeName: "Pizza Express",
@@ -61,3 +63,4 @@ export const mockReviews = [
     tags: ["Mexicano"],
   },
 ]
+*/
