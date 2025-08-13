@@ -320,4 +320,340 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: hp("2%"),
   },
+  overlay: {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.5)",
+  zIndex: 1,
+},
+
+settingsPanel: {
+  position: "absolute",
+  top: 0,
+  right: 0,
+  left: 0,
+  backgroundColor: "white",
+  paddingTop: 40,
+  paddingHorizontal: 20,
+  paddingBottom: 30,
+  borderTopLeftRadius: 20,
+  borderTopRightRadius: 20,
+  zIndex: 2,
+},
+
+settingsTitle: {
+  fontSize: 20,
+  fontWeight: "bold",
+  color: "#ff9500",
+  marginBottom: 20,
+},
+
+settingsOption: {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingVertical: 15,
+  borderBottomWidth: 1,
+  borderBottomColor: "#eee",
+},
+
+settingsOptionText: {
+  fontSize: 16,
+  marginLeft: 10,
+  color: "#333",
+},
+sidePanelRight: {
+  position: "absolute",
+  top: 0,
+  bottom: 0,
+  right: 0, // se pega al lado derecho
+  width: "75%",
+  backgroundColor: "white",
+  paddingTop: 50,
+  paddingHorizontal: 20,
+  zIndex: 2,
+  elevation: 5,
+  shadowColor: "#000",
+  shadowOffset: { width: -2, height: 0 },
+  shadowOpacity: 0.2,
+  shadowRadius: 4,
+},
+settingsDivider: {
+  height: 1,
+  backgroundColor: "#eee",
+  marginVertical: 10,
+},
+sectionTitle: {
+  fontSize: wp("5%"),
+  fontWeight: "bold",
+  color: "#333",
+  marginTop: hp("2%"),
+  marginBottom: hp("1%"),
+},
+
+statsGrid: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+},
+
+statCard: {
+  width: "48%",
+  backgroundColor: "#f8f8f8",
+  borderRadius: wp("4%"),
+  alignItems: "center",
+  paddingVertical: hp("2%"),
+  marginBottom: hp("2%"),
+  elevation: 2,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 2,
+},
+
+statLabel2: {
+  fontSize: wp("3.5%"),
+  color: "#666",
+  marginTop: hp("1%"),
+},
+
+statValue: {
+  fontSize: wp("5%"),
+  fontWeight: "bold",
+  color: "#333",
+},
+
+recentItem: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  paddingVertical: hp("1%"),
+  borderBottomWidth: 1,
+  borderBottomColor: "#eee",
+},
+
+recentPlace: {
+  fontSize: wp("4%"),
+  color: "#333",
+},
+
+emptyText: {
+  fontSize: wp("3.8%"),
+  color: "#999",
+  marginTop: hp("1%"),
+  textAlign: "center",
+},
+sectionHeader: {
+  backgroundColor: "#fff3e0",
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 8,
+  marginTop: 16,
+  marginBottom: 8,
+},
+
+sectionHeaderText: {
+  fontSize: 16,
+  fontWeight: "bold",
+  color: "#ff9500",
+},
+
+recentList: {
+  paddingVertical: 10,
+},
+
+recentCard: {
+  backgroundColor: "#f8f8f8",
+  borderRadius: 12,
+  width: 140,
+  marginRight: 12,
+  alignItems: "center",
+  padding: 12,
+  elevation: 2,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 2,
+},
+
+recentIcon: {
+  backgroundColor: "#ff9500",
+  borderRadius: 30,
+  width: 50,
+  height: 50,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 8,
+},
+
+recentPlace2: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#333",
+  textAlign: "center",
+},
+
+filtersRow: {
+  flexDirection: "column",
+  backgroundColor: "#f8f8f8",
+  borderRadius: 10,
+  padding: 10,
+  marginVertical: 10,
+},
+
+starFilterContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 8,
+},
+
+filterLabel: {
+  fontSize: 14,
+  fontWeight: "600",
+  color: "#333",
+},
+
+distanceChips: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  marginTop: 5,
+},
+
+distanceChip: {
+  backgroundColor: "#eee",
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 20,
+  marginRight: 8,
+},
+
+activeDistanceChip: {
+  backgroundColor: "#ff9500",
+},
+
+distanceChipText: {
+  fontSize: 13,
+  color: "#333",
+},
+
+clearFiltersButton: {
+  alignSelf: "flex-end",
+  marginTop: 8,
+},
+
+deleteReviewButton: {
+  position: "absolute",
+  top: 8,
+  right: 8,
+  zIndex: 1,
+},
+
+loadMoreButton: {
+  alignItems: "center",
+  paddingVertical: 10,
+  marginTop: 5,
+  backgroundColor: "#ff9500",
+  borderRadius: 8,
+},
+
+loadMoreText: {
+  color: "white",
+  fontWeight: "bold",
+},
+
+filtersPanel: {
+  position: "absolute",
+  bottom: 0,
+  left: 0,
+  right: 0,
+  backgroundColor: "white",
+  borderTopLeftRadius: 16,
+  borderTopRightRadius: 16,
+  padding: 20,
+  elevation: 5,
+  zIndex: 2,
+},
+
+searchBarContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  marginHorizontal: 16,
+  marginTop: 12,
+  marginBottom: 16,
+},
+searchInputWrapper: {
+  flex: 1,
+  flexDirection: "row",
+  backgroundColor: "#f0f0f0",
+  borderRadius: 12,
+  alignItems: "center",
+  paddingHorizontal: 10,
+},
+searchInput: {
+  flex: 1,
+  fontSize: 16,
+  paddingVertical: 8,
+  color: "#333",
+},
+filterButton: {
+  backgroundColor: "#ff9500",
+  borderRadius: 10,
+  padding: 10,
+  marginLeft: 10,
+},
+customSlider: {
+  width: "100%",
+  marginVertical: 20,
+},
+activeSortButton: {
+  backgroundColor: "#ff9500",
+},
+clearFiltersButtonBig: {
+  marginTop: 20,
+  backgroundColor: "#ccc",
+  padding: 12,
+  borderRadius: 10,
+  alignItems: "center",
+},
+clearFiltersText: {
+  color: "#000",
+  fontWeight: "600",
+},
+starsRow: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginBottom: 20,
+  paddingHorizontal: 10,
+},
+
+sortButtonsContainer: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  marginVertical: 10,
+  gap: 10,
+},
+
+sortButton: {
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 12,
+  backgroundColor: "#f0f0f0",
+},
+
+sortButtonActive: {
+  backgroundColor: "#ff9500",
+},
+
+sortButtonText: {
+  color: "#333",
+  fontSize: 14,
+},
+
+sortButtonTextActive: {
+  color: "white",
+},
+
 })
