@@ -13,6 +13,7 @@ export type RootStackParamList = {
 }
 
 export type TabParamList = {
+  Map: undefined
   Home: undefined
   Favorites: undefined
   User: undefined

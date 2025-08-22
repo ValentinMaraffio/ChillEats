@@ -1,144 +1,254 @@
-"use client"
+"use client";
 
-import { StatusBar } from "expo-status-bar"
-import { Text, View, ImageBackground, SafeAreaView, TouchableOpacity, ScrollView, Alert } from "react-native"
-import { FontAwesome } from "@expo/vector-icons"
-import { useNavigation } from "@react-navigation/native"
-import { useAuth } from "../../context/authContext"
-import type { NavigationProp } from "./favoritesBackend"
-import { styles, tagStyle } from "./favoritesStyles"
-import { useFavorites } from "../../context/favoritesContext"
-import { calculateDistance } from "../Main/mainBackend"
-import * as Location from "expo-location"
-import { useEffect, useState } from "react"
-import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility"
 
-const Tag = ({ label }: { label: string }) => (
-  <View style={tagStyle.container}>
-    <Text style={tagStyle.text}>{label}</Text>
-  </View>
-)
+import { StatusBar } from "expo-status-bar";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import * as Location from "expo-location";
+import { FontAwesome, Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { useAuth } from "../../context/authContext";
+import { useFavorites } from "../../context/favoritesContext";
+import type { NavigationProp } from "./favoritesBackend";
+import { styles, tagStyle } from "./favoritesStyles";
+import { calculateDistance } from "../Main/mainBackend";
+import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility";
+
+
+type Place = any;
+
+
+const Tag = ({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected?: boolean;
+  onPress?: () => void;
+}) => (
+  <TouchableOpacity
+    activeOpacity={0.8}
+    onPress={onPress}
+    style={[
+      tagStyle.container,
+      selected ? tagStyle.containerSelected : undefined,
+    ]}
+  >
+    <Text style={[tagStyle.text, selected ? tagStyle.textSelected : undefined]}>
+      {label}
+    </Text>
+  </TouchableOpacity>
+);
+
+
+// fallback rápido para mostrar imagen si el lugar no trae foto conocida
+const getPlaceImage = (place: Place) => {
+  return (
+    place?.image ||
+    place?.photoUrl ||
+    place?.photos?.[0]?.url ||
+    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1200&auto=format&fit=crop"
+  );
+};
+
 
 export default function FavoritesScreen() {
-  const navigation = useNavigation<NavigationProp>()
-  const { user } = useAuth()
-  const { favorites, removeFavorite } = useFavorites()
-  const [userLocation, setUserLocation] = useState<Location.LocationObjectCoords | null>(null)
-  const isKeyboardVisible = useKeyboardVisibility()
+  const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuth();
+  const { favorites, removeFavorite } = useFavorites();
+  const [userLocation, setUserLocation] =
+    useState<Location.LocationObjectCoords | null>(null);
+  const isKeyboardVisible = useKeyboardVisibility();
 
-  // Obtener la ubicación del usuario al cargar la pantalla
+
+  // búsqueda por nombre
+  const [searchText, setSearchText] = useState("");
+
+
+  // chips visuales
+  const [chips, setChips] = useState({
+    celiaco: false,
+    vegetariano: false,
+    vegano: false,
+  });
+
+
   useEffect(() => {
-    const getLocation = async () => {
+    (async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync()
+        const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === "granted") {
-          const location = await Location.getCurrentPositionAsync({})
-          setUserLocation(location.coords)
+          const loc = await Location.getCurrentPositionAsync({});
+          setUserLocation(loc.coords);
         }
-      } catch (error) {
-        console.error("Error al obtener la ubicación:", error)
+      } catch (e) {
+        console.log("Error ubicacion:", e);
       }
-    }
+    })();
+  }, []);
 
-    getLocation()
-  }, [])
 
-  // Manejar la eliminación de un favorito
-  const handleRemoveFavorite = (place: any) => {
-    Alert.alert("Eliminar favorito", "¿Estás seguro de que quieres eliminar este lugar de tus favoritos?", [
-      {
-        text: "Cancelar",
-        style: "cancel",
-      },
-      {
-        text: "Eliminar",
-        onPress: () => {
-          removeFavorite(place)
+  const handleRemoveFavorite = (place: Place) => {
+    Alert.alert(
+      "Eliminar favorito",
+      "¿Estás seguro de eliminar este lugar de tus favoritos?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => removeFavorite(place),
         },
-        style: "destructive",
-      },
-    ])
-  }
+      ]
+    );
+  };
 
-  // Si no hay favoritos, mostrar un mensaje
-  if (favorites.length === 0) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <ImageBackground
-          source={require("../../assets/img/fast-food-bg.jpg")}
-          style={styles.background}
-          resizeMode="repeat"
-          imageStyle={{ opacity: 0.3 }}
-        >
-          <View style={styles.filters}>
-            {["Localidad", "Limitación", "Precio", "Local"].map((filter, index) => (
-              <TouchableOpacity key={index} style={styles.filterButton}>
-                <Text style={styles.filterText}>{filter}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
 
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No tienes lugares favoritos</Text>
-            <Text style={styles.emptySubtext}>Agrega lugares a tus favoritos desde el mapa para verlos aquí</Text>
-          </View>
-        </ImageBackground>
-        <StatusBar style="light" />
-      </SafeAreaView>
-    )
-  }
+  const filteredFavorites = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    if (!q) return favorites;
+    return favorites.filter((p: Place) =>
+      (p?.name ?? "").toLowerCase().includes(q)
+    );
+  }, [favorites, searchText]);
+
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ImageBackground
-        source={require("../../assets/img/fast-food-bg.jpg")}
-        style={styles.background}
-        resizeMode="repeat"
-        imageStyle={{ opacity: 0.3 }}
-      >
-        <View style={styles.filters}>
-          {["Localidad", "Limitación", "Precio", "Local"].map((filter, index) => (
-            <TouchableOpacity key={index} style={styles.filterButton}>
-              <Text style={styles.filterText}>{filter}</Text>
+    <SafeAreaView style={styles.safeAreaV2}>
+      {/* Header + Search */}
+      <View style={styles.header}>
+        <Text style={styles.helloText}>
+          Hola <Text style={styles.wave}>👋</Text>
+        </Text>
+
+
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por nombre…"
+            value={searchText}
+            onChangeText={setSearchText}
+            returnKeyType="search"
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchText("")}
+              accessibilityLabel="Borrar búsqueda"
+            >
+              <Ionicons name="close" size={18} />
             </TouchableOpacity>
-          ))}
+          )}
         </View>
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          {favorites.map((place, index) => (
-            <View key={index} style={styles.card}>
-              <View style={styles.cardContent}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.title}>{place.name}</Text>
-                  <Text style={styles.subtext}>
-                    ⭐ {place.rating} ({place.user_ratings_total} reseñas)
-                  </Text>
-                  {userLocation && (
-                    <Text style={styles.subtext}>
-                      🚶{" "}
-                      {calculateDistance(
-                        userLocation.latitude,
-                        userLocation.longitude,
-                        place.geometry.location.lat,
-                        place.geometry.location.lng,
-                      ).toFixed(1)}{" "}
-                      km
-                    </Text>
-                  )}
-                  <View style={styles.tagsRow}>
-                    <Tag label="Celíaco" />
-                    <Tag label="Vegetariano" />
+
+        {/* Chips (solo visuales) */}
+        <View style={styles.chipsRow}>
+          <Tag
+            label="Celíaco"
+            selected={chips.celiaco}
+            onPress={() => setChips((s) => ({ ...s, celiaco: !s.celiaco }))}
+          />
+          <Tag
+            label="Vegetariano"
+            selected={chips.vegetariano}
+            onPress={() =>
+              setChips((s) => ({ ...s, vegetariano: !s.vegetariano }))
+            }
+          />
+          <Tag
+            label="Vegano"
+            selected={chips.vegano}
+            onPress={() => setChips((s) => ({ ...s, vegano: !s.vegano }))}
+          />
+        </View>
+      </View>
+
+
+      {/* Lista */}
+      {filteredFavorites.length === 0 ? (
+        <View style={styles.emptyContainerV2}>
+          <Text style={styles.emptyTitle}>No hay favoritos</Text>
+          <Text style={styles.emptySubtitle}>
+            Agrega lugares desde el mapa o quita el filtro de búsqueda.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: isKeyboardVisible ? 220 : 120 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {filteredFavorites.map((place: Place, idx: number) => {
+            const distance =
+              userLocation &&
+              calculateDistance(
+                userLocation.latitude,
+                userLocation.longitude,
+                place?.geometry?.location?.lat ?? place?.latitude ?? 0,
+                place?.geometry?.location?.lng ?? place?.longitude ?? 0
+              );
+
+
+            return (
+              <View key={`${place?.id ?? idx}`} style={styles.cardV2}>
+                <Image
+                  source={{ uri: getPlaceImage(place) }}
+                  style={styles.cardImage}
+                />
+
+
+                <View style={styles.cardInfo}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{place?.name}</Text>
+
+
+                    <View style={styles.metaRow}>
+                      <Ionicons name="star" size={14} />
+                      <Text style={styles.metaText}>
+                        {Number(place?.rating ?? 0).toFixed(1)}
+                        {place?.user_ratings_total
+                          ? ` • ${place.user_ratings_total} reseñas`
+                          : ""}
+                      </Text>
+                      {typeof distance === "number" && (
+                        <>
+                          <Text style={styles.dot}>•</Text>
+                          <Ionicons name="walk" size={14} />
+                          <Text style={styles.metaText}>
+                            {distance.toFixed(1)} km
+                          </Text>
+                        </>
+                      )}
+                    </View>
                   </View>
+
+
+                  <TouchableOpacity
+                    onPress={() => handleRemoveFavorite(place)}
+                    style={styles.heartBtn}
+                    accessibilityLabel="Quitar de favoritos"
+                  >
+                    <FontAwesome name="heart" size={22} color="#ff9500" />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => handleRemoveFavorite(place)} style={styles.favoriteButton}>
-                  <FontAwesome name="heart" size={24} color="#ff9500" />
-                </TouchableOpacity>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </ScrollView>
-      </ImageBackground>
-      <StatusBar style="light" />
+      )}
+
+
+      <StatusBar style="dark" />
     </SafeAreaView>
-  )
+  );
 }

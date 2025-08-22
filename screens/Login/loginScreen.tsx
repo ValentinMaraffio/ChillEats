@@ -35,7 +35,7 @@ export default function LoginScreen() {
   // Modified to handle the login directly in this component
   const handleLogin = async () => {
     try {
-      const res = await axios.post('http://172.16.1.95:8000/api/auth/signin', { email, password });
+      const res = await axios.post('http://192.168.0.236:8000/api/auth/signin', { email, password });
       const token = res.data.token;
   
       await Promise.resolve(login(token));

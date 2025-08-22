@@ -1,108 +1,142 @@
-import { StyleSheet } from "react-native"
-import { heightPercentageToDP as hp } from "react-native-responsive-screen"
+import { StyleSheet } from "react-native";
+import {
+  heightPercentageToDP as hp,
+  widthPercentageToDP as wp,
+} from "react-native-responsive-screen";
+
 
 export const styles = StyleSheet.create({
-  safeArea: {
+  // contenedor principal con fondo claro como en Main
+  safeAreaV2: {
     flex: 1,
-    backgroundColor: "#FF9500",
+    backgroundColor: "#FFFFFF",
   },
-  background: {
-    flex: 1,
+
+
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: hp("2%"),
   },
-  filters: {
+
+
+  helloText: {
+    fontSize: 24,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  wave: { fontSize: 22 },
+
+
+  searchBar: {
     flexDirection: "row",
-    justifyContent: "space-evenly",
-    width: "100%",
-    paddingHorizontal: 10,
-    marginTop: hp("6%"),
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#F3F4F6",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
-  filterButton: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginHorizontal: 2,
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
   },
-  filterText: {
-    fontSize: 16,
-    color: "#000",
+
+
+  chipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 6,
   },
-  card: {
+
+
+  // Cards
+  cardV2: {
     backgroundColor: "#fff",
-    marginVertical: 12,
-    padding: 30,
-    borderRadius: 30,
-    elevation: 5,
-    marginTop: hp("5%"),
-    width: "80%",
+    borderRadius: 16,
+    overflow: "hidden",
+    width: wp("92%"),
     alignSelf: "center",
-    shadowColor: "#000000",
+    marginTop: 14,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
-  cardContent: {
+  cardImage: {
+    width: "100%",
+    height: 180,
+  },
+  cardInfo: {
     flexDirection: "row",
     alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
   },
-  subtext: {
-    color: "#555",
-  },
-  tagsRow: {
+  metaRow: {
     flexDirection: "row",
-    marginTop: 5,
-  },
-  cardIcon: {
-    marginLeft: 10,
-  },
-  favoriteButton: {
-    padding: 10,
-  },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-around",
     alignItems: "center",
-    paddingVertical: hp("1.5%"),
-    borderTopWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: "#FF9500",
+    gap: 6,
   },
-  emptyContainer: {
+  metaText: {
+    color: "#4B5563",
+  },
+  dot: {
+    color: "#9CA3AF",
+    marginHorizontal: 6,
+  },
+  heartBtn: {
+    padding: 8,
+    marginLeft: 8,
+  },
+
+
+  // Estado vacío
+  emptyContainerV2: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
   },
-  emptyText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 10,
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    color: "#6B7280",
     textAlign: "center",
   },
-  emptySubtext: {
-    fontSize: 16,
-    color: "#f8f8f8",
-    textAlign: "center",
-    opacity: 0.8,
-  },
-})
+});
+
 
 export const tagStyle = {
   container: {
-    backgroundColor: "#FFBB5C",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginRight: 5,
-    borderRadius: 5,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
   text: {
-    color: "#FFFFFF",
-    fontWeight: "bold" as const,
+    color: "#111827",
+    fontWeight: "600" as const,
+    fontSize: 13,
   },
-}
+  containerSelected: {
+    backgroundColor: "#FFEDD5",
+    borderColor: "#FDBA74",
+  },
+  textSelected: {
+    color: "#9A3412",
+  },
+};

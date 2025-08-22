@@ -24,6 +24,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { View, Text, Pressable, Platform, LayoutChangeEvent, StyleSheet  } from "react-native"
 import Animated, { useSharedValue, withTiming, useAnimatedStyle, Easing } from "react-native-reanimated"
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs"
+import { FiltersProvider } from "./context/filtersContext"
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 const Tab = createBottomTabNavigator<TabParamList>()
@@ -296,15 +297,17 @@ export default function App() {
       <NavigationContainer>
         <AuthProvider>
           <FavoritesProvider>
-            <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="MainTabs" component={MainTabs} />
-              <Stack.Screen name="Login" component={LoginScreen} />
-              <Stack.Screen name="Register" component={RegisterScreen} />
-              <Stack.Screen name="Verification" component={VerificationScreen} />
-              <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-              <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-              <Stack.Screen name="Profile" component={ProfileScreen} />
-            </Stack.Navigator>
+            <FiltersProvider> {/* 👈 envuelve las tabs y pantallas */}
+              <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="MainTabs" component={MainTabs} />
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="Verification" component={VerificationScreen} />
+                <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+                <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+                <Stack.Screen name="Profile" component={ProfileScreen} />
+              </Stack.Navigator>
+            </FiltersProvider>
           </FavoritesProvider>
         </AuthProvider>
       </NavigationContainer>
