@@ -25,7 +25,7 @@ mongoose.connect(process.env.MONGO_URL).then(()=>{
 
 app.use('/api/auth', authRouter)
 app.use('/api/posts', postsRouter)
-app.use('/api/reviews', reviewRouter)
+app.use("/api/reviews", reviewRouter)
 app.get('/',(req,res)=>{
     res.json({message:"hello from the server"})
 

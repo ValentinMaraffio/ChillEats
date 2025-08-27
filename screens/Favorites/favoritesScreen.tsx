@@ -1,6 +1,5 @@
 "use client";
 
-
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -19,13 +18,14 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../context/authContext";
 import { useFavorites } from "../../context/favoritesContext";
 import type { NavigationProp } from "./favoritesBackend";
+import { getPrimaryPhotoUrl } from "./favoritesBackend"; // <<< nuevo helper
 import { styles, tagStyle } from "./favoritesStyles";
 import { calculateDistance } from "../Main/mainBackend";
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility";
+import { getPhotoUrl } from "../Main/mainBackend";
 
 
 type Place = any;
-
 
 const Tag = ({
   label,
@@ -50,18 +50,6 @@ const Tag = ({
   </TouchableOpacity>
 );
 
-
-// fallback rápido para mostrar imagen si el lugar no trae foto conocida
-const getPlaceImage = (place: Place) => {
-  return (
-    place?.image ||
-    place?.photoUrl ||
-    place?.photos?.[0]?.url ||
-    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=1200&auto=format&fit=crop"
-  );
-};
-
-
 export default function FavoritesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user } = useAuth();
@@ -70,10 +58,8 @@ export default function FavoritesScreen() {
     useState<Location.LocationObjectCoords | null>(null);
   const isKeyboardVisible = useKeyboardVisibility();
 
-
   // búsqueda por nombre
   const [searchText, setSearchText] = useState("");
-
 
   // chips visuales
   const [chips, setChips] = useState({
@@ -81,7 +67,6 @@ export default function FavoritesScreen() {
     vegetariano: false,
     vegano: false,
   });
-
 
   useEffect(() => {
     (async () => {
@@ -96,7 +81,6 @@ export default function FavoritesScreen() {
       }
     })();
   }, []);
-
 
   const handleRemoveFavorite = (place: Place) => {
     Alert.alert(
@@ -113,7 +97,6 @@ export default function FavoritesScreen() {
     );
   };
 
-
   const filteredFavorites = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     if (!q) return favorites;
@@ -122,15 +105,13 @@ export default function FavoritesScreen() {
     );
   }, [favorites, searchText]);
 
-
   return (
     <SafeAreaView style={styles.safeAreaV2}>
       {/* Header + Search */}
       <View style={styles.header}>
         <Text style={styles.helloText}>
-          Hola <Text style={styles.wave}>👋</Text>
+           <Text style={styles.wave}></Text>
         </Text>
-
 
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} />
@@ -150,7 +131,6 @@ export default function FavoritesScreen() {
             </TouchableOpacity>
           )}
         </View>
-
 
         {/* Chips (solo visuales) */}
         <View style={styles.chipsRow}>
@@ -173,7 +153,6 @@ export default function FavoritesScreen() {
           />
         </View>
       </View>
-
 
       {/* Lista */}
       {filteredFavorites.length === 0 ? (
@@ -198,19 +177,18 @@ export default function FavoritesScreen() {
                 place?.geometry?.location?.lng ?? place?.longitude ?? 0
               );
 
+            const imageUri = getPrimaryPhotoUrl(place); // <<< usa el helper
 
             return (
-              <View key={`${place?.id ?? idx}`} style={styles.cardV2}>
-                <Image
-                  source={{ uri: getPlaceImage(place) }}
-                  style={styles.cardImage}
-                />
-
+              <View
+                key={`${place?.place_id ?? place?.id ?? idx}`}
+                style={styles.cardV2}
+              >
+                <Image source={{ uri: imageUri }} style={styles.cardImage} />
 
                 <View style={styles.cardInfo}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{place?.name}</Text>
-
 
                     <View style={styles.metaRow}>
                       <Ionicons name="star" size={14} />
@@ -232,7 +210,6 @@ export default function FavoritesScreen() {
                     </View>
                   </View>
 
-
                   <TouchableOpacity
                     onPress={() => handleRemoveFavorite(place)}
                     style={styles.heartBtn}
@@ -246,7 +223,6 @@ export default function FavoritesScreen() {
           })}
         </ScrollView>
       )}
-
 
       <StatusBar style="dark" />
     </SafeAreaView>

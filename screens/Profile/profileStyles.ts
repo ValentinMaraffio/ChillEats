@@ -83,24 +83,6 @@ export const styles = StyleSheet.create({
     color: "white",
     marginBottom: hp("2%"),
   },
-  statsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "80%",
-    marginTop: hp("1%"),
-  },
-  statItem: {
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: wp("5%"),
-    fontWeight: "bold",
-    color: "white",
-  },
-  statLabel: {
-    fontSize: wp("3%"),
-    color: "white",
-  },
   tabsContainer: {
     flexDirection: "row",
     marginTop: hp("2%"),
@@ -256,6 +238,7 @@ export const styles = StyleSheet.create({
     borderRadius: wp("5%"),
     padding: wp("4%"),
     marginBottom: hp("2%"),
+    alignSelf: 'stretch',
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -265,10 +248,12 @@ export const styles = StyleSheet.create({
   reviewHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     marginBottom: hp("1%"),
+    alignItems: 'flex-start',
   },
   reviewPlaceName: {
+    flex: 1,
+    flexShrink: 1,
     fontSize: wp("4.5%"),
     fontWeight: "bold",
     color: "#333",
@@ -287,11 +272,23 @@ export const styles = StyleSheet.create({
     fontSize: wp("3.5%"),
     color: "#666",
   },
+  reviewTextWrapper: {
+    alignSelf: 'stretch',   // asegura ancho completo para el párrafo
+    width: '100%',
+  },
   reviewText: {
     fontSize: wp("3.8%"),
     color: "#333",
     marginBottom: hp("1.5%"),
     lineHeight: hp("2.5%"),
+    alignSelf: 'stretch',      // ocupa todo el ancho disponible
+    width: '100%',             // evita “columnas angostas”
+    includeFontPadding: false, // Android: quita padding fantasma arriba/abajo
+    textAlignVertical: 'top',  // Android: ancla arriba
+    textAlign: 'left',      // bordes más rectos (última línea queda normal)
+    paddingRight: 1,           // Android: evita clipping del último carácter
+    // opcional si ves dientes en textos cortos:
+    // letterSpacing: 0.2,
   },
   reviewTags: {
     flexDirection: "row",
@@ -545,7 +542,7 @@ clearFiltersButton: {
 
 deleteReviewButton: {
   position: "absolute",
-  top: 8,
+  bottom: 8,
   right: 8,
   zIndex: 1,
 },
@@ -582,6 +579,7 @@ searchBarContainer: {
   marginHorizontal: 16,
   marginTop: 12,
   marginBottom: 16,
+  
 },
 searchInputWrapper: {
   flex: 1,
@@ -590,6 +588,11 @@ searchInputWrapper: {
   borderRadius: 12,
   alignItems: "center",
   paddingHorizontal: 10,
+    shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.1,
+  shadowRadius: 3,
+  elevation: 3,
 },
 searchInput: {
   flex: 1,
@@ -624,7 +627,8 @@ clearFiltersText: {
 starsRow: {
   flexDirection: "row",
   justifyContent: "space-between",
-  marginBottom: 20,
+  marginBottom: 15,
+  marginTop: 15,
   paddingHorizontal: 10,
 },
 
@@ -656,4 +660,7 @@ sortButtonTextActive: {
   color: "white",
 },
 
+pickerContainer: {
+  
+}
 })

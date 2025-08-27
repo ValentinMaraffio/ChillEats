@@ -19,7 +19,9 @@ export interface Place {
   user_ratings_total?: number
   vicinity?: string
   photos?: { photo_reference: string; height: number; width: number }[]
+  dietaryCategories?: string[]
 }
+
 // 🔍 Búsqueda filtrada por tipo de restricción (sin TACC, vegano, etc.)
 export const searchFilteredRestaurants = async (
   filters: string[],
@@ -28,40 +30,46 @@ export const searchFilteredRestaurants = async (
   radius = 3000,
 ): Promise<Place[]> => {
   try {
-    // Crear términos de búsqueda basados en los filtros
-    const searchTerms = filters
-      .map((filter) => {
-        switch (filter.toLowerCase()) {
-          case "sin tacc":
-          case "celiaco":
-            return "gluten free celiac sin tacc celiaco"
-          case "vegano":
-            return "vegan vegano plant based"
-          case "vegetariano":
-            return "vegetarian vegetariano"
-          case "kosher":
-            return "kosher"
-          case "halal":
-            return "halal"
-          default:
-            return filter
+    const allResults: Place[] = []
+
+    // Search for each filter individually to track which restaurants match which categories
+    for (const filter of filters) {
+      const searchTerms = getSearchTermsForFilter(filter)
+      const query = `restaurant ${searchTerms}`
+
+      const response = await axios.get("https://maps.googleapis.com/maps/api/place/textsearch/json", {
+        params: {
+          query,
+          location: `${latitude},${longitude}`,
+          radius,
+          key: GOOGLE_API_KEY,
+        },
+      })
+
+      const results: Place[] = response.data.results || []
+
+      // Add dietary category to each result
+      results.forEach((place) => {
+        const existingPlace = allResults.find((p) => p.place_id === place.place_id)
+        if (existingPlace) {
+          // Add this category to existing place
+          if (!existingPlace.dietaryCategories) {
+            existingPlace.dietaryCategories = []
+          }
+          if (!existingPlace.dietaryCategories.includes(filter)) {
+            existingPlace.dietaryCategories.push(filter)
+          }
+        } else {
+          // Add new place with this category
+          allResults.push({
+            ...place,
+            dietaryCategories: [filter],
+          })
         }
       })
-      .join(" ")
+    }
 
-    const query = `restaurant ${searchTerms}`
-
-    const response = await axios.get("https://maps.googleapis.com/maps/api/place/textsearch/json", {
-      params: {
-        query,
-        location: `${latitude},${longitude}`,
-        radius,
-        key: GOOGLE_API_KEY,
-      },
-    })
-
-    const results: Place[] = response.data.results || []
-    return results
+    return allResults
   } catch (error) {
     console.error("Error buscando lugares filtrados:", error)
     return []
@@ -193,4 +201,48 @@ export const sortPlacesByDistance = (places: Place[], userLocation: Location.Loc
     )
     return distA - distB
   })
+}
+
+const getSearchTermsForFilter = (filter: string): string => {
+  switch (filter.toLowerCase()) {
+    case "sin tacc":
+    case "celiaco":
+      return "gluten free celiac sin tacc celiaco"
+    case "vegano":
+      return "vegan vegano plant based"
+    case "vegetariano":
+      return "vegetarian vegetariano"
+    case "kosher":
+      return "kosher"
+    case "halal":
+      return "halal"
+    case "keto":
+      return "keto ketogenic low carb"
+    case "paleo":
+      return "paleo paleolithic"
+    default:
+      return filter
+  }
+}
+
+export const getDietaryDisplayLabel = (category: string): string => {
+  switch (category.toLowerCase()) {
+    case "sin tacc":
+    case "celiaco":
+      return "Celiaco"
+    case "vegano":
+      return "Vegano"
+    case "vegetariano":
+      return "Vegetariano"
+    case "kosher":
+      return "Kosher"
+    case "halal":
+      return "Halal"
+    case "keto":
+      return "Keto"
+    case "paleo":
+      return "Paleo"
+    default:
+      return category
+  }
 }

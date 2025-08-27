@@ -13,6 +13,7 @@ import axios from "axios"
 import Slider from "@react-native-community/slider"
 import { Picker } from "@react-native-picker/picker"
 
+
 type Review = {
   id: string
   placeName: string
@@ -39,11 +40,14 @@ export default function ProfileScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "closest" | "farthest" | null>(null)
-  const [sortCriterion, setSortCriterion] = useState<"date" | "distance">("date")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-
+  const [sortCriterion, setSortCriterion] = useState<"date" | "distance" | "rating">("date")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  
+  const screenHeight = Dimensions.get("window").height
+  const filtersPanelHeight = Math.min(640, screenHeight * 0.62)
   const screenWidth = Dimensions.get("window").width
   const panelWidth = screenWidth * 0.75 // ancho del panel
+  
   const slideAnim = useRef(new Animated.Value(panelWidth)).current // inicia oculto a la derecha
 
   const handleDeleteReview = async (id: string) => {
@@ -57,7 +61,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await axios.delete(`http://192.168.0.236:8000/api/reviews/${id}`, {
+            await axios.delete(`http://172.16.1.95:8000/api/reviews/${id}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             setReviews(reviews.filter((r) => r.id !== id))
@@ -72,7 +76,7 @@ export default function ProfileScreen() {
   )
 }
 
-  
+  //animacion cierre deslizando configuracion
   const panResponder = useRef(
   PanResponder.create({
     onMoveShouldSetPanResponder: (evt, gestureState) => {
@@ -106,12 +110,45 @@ export default function ProfileScreen() {
 ).current
 
 
+//animacion cierre deslizando filtros de reseñas
+const slideY = useRef(new Animated.Value(0)).current
+const panResponderFilters = useRef(
+  PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onStartShouldSetPanResponderCapture: () => true,
+    onMoveShouldSetPanResponderCapture: () => true,
+    onMoveShouldSetPanResponder: (_, gestureState) =>
+      Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dx) < 10,
+    onPanResponderMove: (_, gestureState) => {
+      if (gestureState.dy > 0) {
+        slideY.setValue(gestureState.dy);
+      }
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      if (gestureState.dy > 100) {
+        Animated.timing(slideY, {
+          toValue: 500,
+          duration: 200,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowFilters(false);
+          slideY.setValue(0);
+        });
+      } else {
+        Animated.spring(slideY, {
+          toValue: 0,
+          useNativeDriver: true,
+        }).start();
+      }
+    },
+  })
+).current;
 
 useEffect(() => {
   const fetchUserReviews = async () => {
     try {
       //const { token } = useAuth() // Asegurate de que el token esté disponible
-      const res = await axios.get('http://192.168.0.236:8000/api/reviews/my-reviews', {
+      const res = await axios.get('http://172.16.1.95:8000/api/reviews/my-reviews', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -121,11 +158,7 @@ useEffect(() => {
         id: review._id,
         placeName: review.placeName,
         rating: review.rating,
-        date: new Date(review.createdAt).toLocaleDateString("es-AR", {
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        }),
+        date: review.createdAt,
         text: review.comment,
         distance: 0, // si no tenés distancia, podés dejarlo en 0 u ocultar
         tags: review.tags,
@@ -167,15 +200,34 @@ useEffect(() => {
       const dateB = new Date(b.date).getTime()
       return sortDirection === "asc" ? dateA - dateB : dateB - dateA
     })
-  } else if (sortCriterion === "distance") {
+  } 
+  else if (sortCriterion === "distance") {
     filtered.sort((a, b) =>
       sortDirection === "asc" ? a.distance - b.distance : b.distance - a.distance
     )
+  } 
+  else if (sortCriterion === "rating") {
+    filtered.sort((a, b) =>
+      sortDirection === "asc" ? a.rating - b.rating : b.rating - a.rating
+    )
   }
-  
 
   setFilteredReviews(filtered)
-}, [searchQuery, starFilter, distanceFilter, sortCriterion, sortDirection, reviews])
+}, [searchQuery, starFilter, distanceFilter, sortOrder, sortCriterion, sortDirection, reviews])
+
+// ANIMACION DESPLEGABLE FILTROS
+useEffect(() => {
+  if (showFilters) {
+    slideY.setValue(500); // empieza fuera de pantalla
+    Animated.timing(slideY, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }
+}, [showFilters]);
+
+
 
 //ANIMACION DESPLEGABLE CONFIGURACION 
 useEffect(() => {
@@ -235,6 +287,8 @@ const handleLogout = async () => {
   const resetFilters = () => {
     setStarFilter(0)
     setDistanceFilter(0)
+    setSortCriterion("date")     
+    setSortDirection("desc")     
     setFilteredReviews(reviews)
   }
 
@@ -303,18 +357,7 @@ const handleLogout = async () => {
     <Text style={styles.settingsOptionText}>Editar perfil</Text>
   </TouchableOpacity>
 
-  {/* Cambiar contraseña */}
-  <TouchableOpacity
-    style={styles.settingsOption}
-    onPress={() => {
-      setShowSettings(false)
-      Alert.alert("Cambiar contraseña", "Esta funcionalidad estará disponible próximamente")
-    }}
-  >
-    <Ionicons name="key-outline" size={22} color="#ff9500" />
-    <Text style={styles.settingsOptionText}>Cambiar contraseña</Text>
-  </TouchableOpacity>
-
+  
   {/* Tema de la app */}
   <TouchableOpacity
     style={styles.settingsOption}
@@ -387,20 +430,6 @@ const handleLogout = async () => {
           <Text style={styles.name}>{user?.name || "Nombre no disponible"}</Text>
           <Text style={styles.email}>{user?.email || "Correo no disponible"}</Text>
 
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{reviews.length}</Text>
-              <Text style={styles.statLabel}>Reseñas</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>4.2</Text>
-              <Text style={styles.statLabel}>Promedio</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>12</Text>
-              <Text style={styles.statLabel}>Favoritos</Text>
-            </View>
-          </View>
         </View>
 
         <View style={styles.tabsContainer}>
@@ -516,18 +545,34 @@ const handleLogout = async () => {
               style={styles.deleteReviewButton}
               onPress={() => handleDeleteReview(review.id)}
             >
-              <Ionicons name="trash-outline" size={20} color="red" />
+              <Ionicons name="trash-outline" size={20} color="#FFC266" />
             </TouchableOpacity>
 
             <View style={styles.reviewHeader}>
-              <Text style={styles.reviewPlaceName}>{review.placeName}</Text>
-              <Text style={styles.reviewDate}>{review.date}</Text>
+              <Text 
+                style={styles.reviewPlaceName}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {review.placeName}
+              </Text>
+              <Text style={styles.reviewDate}>
+                  {new Date(review.date).toLocaleDateString("es-AR", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+              </Text>
             </View>
             <View style={styles.reviewRatingContainer}>
               {renderStars(review.rating)}
               <Text style={styles.reviewDistance}>{review.distance} km</Text>
             </View>
-            <Text style={styles.reviewText}>{review.text}</Text>
+                  
+            <View style={styles.reviewTextWrapper}>
+              <Text style={styles.reviewText}>{review.text}</Text>
+            </View>
+
             <View style={styles.reviewTags}>
               {review.tags.map((tag: string, tagIndex: number) => (
                 <View key={tagIndex} style={styles.reviewTag}>
@@ -557,22 +602,47 @@ const handleLogout = async () => {
       </View>
     )}
 
-    {/* Modal de filtros */}
-    <Modal
+{/* Modal de filtros */}
+<Modal
   visible={showFilters}
-  animationType="slide"
-  transparent={true}
+  transparent
   onRequestClose={() => setShowFilters(false)}
 >
   <View style={{ flex: 1 }}>
-    {/* Overlay */}
+    {/* Overlay fijo */}
     <TouchableOpacity
       style={styles.overlay}
       activeOpacity={1}
       onPress={() => setShowFilters(false)}
     />
 
-    <View style={[styles.filtersPanel, { position: 'absolute', bottom: 0, left: 0, right: 0 }]}>
+    {/* Panel animado */}
+    <Animated.View
+      style={[
+        styles.filtersPanel,
+        { transform: [{ translateY: slideY }] },
+      ]}
+      //{...panResponderFilters.panHandlers}
+    >
+      {/* Handle para arrastrar */}
+      <View
+        {...panResponderFilters.panHandlers}
+        style={{
+          width: "100%",
+          alignItems: "center",
+          paddingVertical: 10,
+        }}
+      >
+        <View
+          style={{
+            width: 40,
+            height: 5,
+            backgroundColor: "#ccc",
+            borderRadius: 3,
+          }}
+        />
+      </View>
+
       <Text style={styles.filtersTitle}>Filtros</Text>
 
       {/* Estrellas */}
@@ -581,7 +651,9 @@ const handleLogout = async () => {
         {[1, 2, 3, 4, 5].map((star) => (
           <TouchableOpacity
             key={star}
-            onPress={() => setStarFilter((prev) => (prev === star ? 0 : star))}
+            onPress={() =>
+              setStarFilter((prev) => (prev === star ? 0 : star))
+            }
             style={styles.starButton}
           >
             <FontAwesome
@@ -593,51 +665,45 @@ const handleLogout = async () => {
         ))}
       </View>
 
-      {/* Distancia */}
-      <View style={{ marginVertical: 10 }}>
-  <Text style={styles.filterLabel}>
-    Distancia máxima: <Text style={{ fontWeight: "bold" }}>{distanceFilter} km</Text>
-  </Text>
-  <View style={{ marginTop: 10, paddingHorizontal: 10 }}>
-    <Slider
-      style={{ width: "100%" }}
-      minimumValue={1}
-      maximumValue={50}
-      step={1}
-      minimumTrackTintColor="#ff9500"
-      maximumTrackTintColor="#ddd"
-      thumbTintColor="#ff9500"
-      value={distanceFilter}
-      onValueChange={(value: number) => setDistanceFilter(value)}
-    />
-  </View>
-</View>
-
       {/* Ordenamiento */}
       <Text style={styles.filterLabel}>Ordenar por</Text>
-<View style={{ backgroundColor: "#f5f5f5", borderRadius: 8, marginBottom: 15 }}>
-  <Picker
-    selectedValue={sortCriterion}
-    onValueChange={(value) => setSortCriterion(value)}
-    style={{ minHeight: 50, width: "100%" }}
-  >
-    <Picker.Item label="Fecha" value="date" />
-    <Picker.Item label="Distancia" value="distance" />
-  </Picker>
-</View>
+      <View
+        style={{
+          backgroundColor: "#f5f5f5",
+          borderRadius: 8,
+          marginBottom: 15,
+        }}
+      >
+        <Picker
+          selectedValue={sortCriterion}
+          onValueChange={(value) => setSortCriterion(value)}
+          style={{ width: "100%", minHeight: 50 }}
+          itemStyle={{ fontSize: 16, textAlign: "center" }}
+        >
+          <Picker.Item label="Fecha" value="date" />
+          <Picker.Item label="Distancia" value="distance" />
+          <Picker.Item label="Valoración" value="rating" />
+        </Picker>
+      </View>
 
-<Text style={styles.filterLabel}>Orden</Text>
-<View style={{ backgroundColor: "#f5f5f5", borderRadius: 8, marginBottom: 20 }}>
-  <Picker
-    selectedValue={sortDirection}
-    onValueChange={(value) => setSortDirection(value)}
-    style={{ minHeight: 50, width: "100%" }}
-  >
-    <Picker.Item label="Ascendente" value="asc" />
-    <Picker.Item label="Descendente" value="desc" />
-  </Picker>
-</View>
-
+      <Text style={styles.filterLabel}>Orden</Text>
+      <View
+        style={{
+          backgroundColor: "#f5f5f5",
+          borderRadius: 8,
+          marginBottom: 20,
+        }}
+      >
+        <Picker
+          selectedValue={sortDirection}
+          onValueChange={(value) => setSortDirection(value)}
+          style={{ width: "100%", minHeight: 50 }}
+          itemStyle={{ fontSize: 16, textAlign: "center" }}
+        >
+          <Picker.Item label="Ascendente" value="asc" />
+          <Picker.Item label="Descendente" value="desc" />
+        </Picker>
+      </View>
 
       {/* Limpiar filtros */}
       <TouchableOpacity
@@ -646,11 +712,11 @@ const handleLogout = async () => {
       >
         <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
       </TouchableOpacity>
-    </View>
+    </Animated.View>
   </View>
 </Modal>
   </View>
-
+  
         )}
       </ScrollView>
 
