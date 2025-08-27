@@ -1,24 +1,29 @@
 {
   "expo": {
-    "name": "chilleats-project",
-    "slug": "chilleats-project",
+    "name": "ChillEats",
+    "slug": "ChillEats",
     "scheme": "chilleats",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FF9500"
     },
     "ios": {
       "bundleIdentifier": "com.chilleats.app",
       "supportsTablet": true
     },
     "android": {
+      "name": "ChillEats",
       "package": "com.chilleats.app",
+      "icon": "./assets/icon.png",
+      "android.splash": "./assets/splash-icon.png",
+      "android.splash.backgroundColor": "#FF9500",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
