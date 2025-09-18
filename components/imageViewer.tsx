@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons"
 const { width, height } = Dimensions.get("window")
 
 const getPhotoUrl = (photoReference: string, maxWidth: number): string => {
-  const GOOGLE_API_KEY = "AIzaSyAY3mAN-5CBIY6P68oJmXrGm0lx_Sawrb4" 
+  const GOOGLE_API_KEY = "AIzaSyAf_jsZw6lt89DiMQ2pG_fwl8ckq24pRAU" 
   return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photoReference}&key=${GOOGLE_API_KEY}`
 }
 
