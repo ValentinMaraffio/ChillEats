@@ -18,6 +18,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
+  Linking,
 } from "react-native"
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps"
 import { Ionicons, FontAwesome } from "@expo/vector-icons"
@@ -59,11 +60,6 @@ import {
 
 // estilos ORIGINALES para bottom sheet + carousel
 import { styles as baseStyles } from "./mainStyles"
-
-//logs de consola
-const VERBOSE = false
-const logv = (...args: any[]) => { if (__DEV__ && VERBOSE) console.log(...args) }
-//VERBOSE = true cuando quieras que aparezca  
 
 const { width, height } = Dimensions.get("window")
 const MAX_PLACES_LIMIT = 15
@@ -263,11 +259,11 @@ export default function MainScreenV2() {
 
       if (selectedFilters.length > 0) {
         // When filters are selected, only get filtered results
-        logv("[v0] Fetching filtered restaurants for filters:", selectedFilters)
+        console.log("[v0] Fetching filtered restaurants for filters:", selectedFilters)
         results = await searchFilteredRestaurants(selectedFilters, location.latitude, location.longitude)
       } else {
         // When no filters (Recomendados), get regular restaurants
-        logv("[v0] Fetching regular restaurants (Recomendados mode)")
+        console.log("[v0] Fetching regular restaurants (Recomendados mode)")
         results = await searchPlaces("restaurant", location)
       }
 
@@ -285,6 +281,11 @@ export default function MainScreenV2() {
           }
         }
       }
+
+      console.log(
+        "[v0] Final results with dietary categories:",
+        take.map((p) => ({ name: p.name, categories: p.dietaryCategories })),
+      )
 
       setRecommended(take)
       // preparar mapa/carrusel
@@ -478,6 +479,12 @@ export default function MainScreenV2() {
     if (selectedPlace) Alert.alert("Direcciones", `Abriendo ${selectedPlace.name}`)
   }
 
+  const handleWebsite = () => {
+    if (selectedPlace?.website) {
+      Linking.openURL(selectedPlace.website).catch((err) => Alert.alert("Error", "No se pudo abrir el sitio web"))
+    }
+  }
+
   const scrollToIndex = useCallback(
     (index: number, animated = false) => {
       if (!flatListRef.current || infiniteData.length === 0 || isInfiniteScrolling.current) return
@@ -643,16 +650,20 @@ export default function MainScreenV2() {
 
                       <View style={baseStyles.badges}>
                         {(() => {
+                          console.log("[v0] Rendering badges for item:", item.name)
+                          console.log("[v0] Item dietaryCategories:", item.dietaryCategories)
+                          console.log("[v0] Current selectedFilters:", selectedFilters)
+
                           if (!item.dietaryCategories || item.dietaryCategories.length === 0) {
-                            logv("[v0] No dietary categories, showing default badge")
+                            console.log("[v0] No dietary categories, showing default badge")
                             return <Text style={baseStyles.badge}>Restaurante</Text>
                           }
 
                           const filteredBadges = getFilteredBadges(item.dietaryCategories, selectedFilters)
-                          
+                          console.log("[v0] Filtered badges result:", filteredBadges)
 
                           if (filteredBadges.length === 0) {
-                            logv("[v0] No matching badges after filtering")
+                            console.log("[v0] No matching badges after filtering")
                             return <Text style={baseStyles.badge}>Restaurante</Text>
                           }
 
@@ -660,7 +671,7 @@ export default function MainScreenV2() {
                             <Text
                               key={index}
                               style={{
-                                backgroundColor: "#4CAF50",
+                                backgroundColor: "#00b50677",
                                 color: "#fff",
                                 paddingHorizontal: 10,
                                 paddingVertical: 6,
@@ -835,7 +846,7 @@ export default function MainScreenV2() {
                   <FlatList
                     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
                     data={dataToShow}
-                    keyExtractor={(item, idx) => item.place_id ?? `p-${idx}`}
+                    keyExtractor={(item) => item.place_id || uuidv4()}
                     renderItem={({ item }) => (
                       <TouchableOpacity
                         style={s.card}
@@ -899,6 +910,21 @@ export default function MainScreenV2() {
                                     </Text>
                                   ))}
                               </View>
+                            )}
+                            {item.website && (
+                              <TouchableOpacity
+                                style={s.websiteButton}
+                                onPress={() => {
+                                  if (item.website) {
+                                    Linking.openURL(item.website).catch(() =>
+                                      Alert.alert("Error", "No se pudo abrir el sitio web"),
+                                    )
+                                  }
+                                }}
+                              >
+                                <Ionicons name="globe-outline" size={16} color="#007AFF" />
+                                <Text style={s.websiteButtonText}>Sitio Web Oficial</Text>
+                              </TouchableOpacity>
                             )}
                           </View>
                           <TouchableOpacity onPress={() => toggleFavorite(item)}>
@@ -1116,7 +1142,13 @@ export default function MainScreenV2() {
                     <View style={baseStyles.tabContent}>
                       {activeTab === "info" ? (
                         <View style={[baseStyles.infoTabContent, { justifyContent: "flex-start", paddingTop: 20 }]}>
-                          <View style={[baseStyles.infoActionButtons, { marginTop: 10 }]}>
+                          {selectedPlace.website && (
+                            <TouchableOpacity style={s.websiteButtonLarge} onPress={handleWebsite}>
+                              <Ionicons name="globe-outline" size={20} color="#fff" />
+                              <Text style={s.websiteButtonLargeText}>Visitar Sitio Web Oficial</Text>
+                            </TouchableOpacity>
+                          )}
+                          <View style={[baseStyles.infoActionButtons, { marginTop: selectedPlace.website ? 20 : 10 }]}>
                             <TouchableOpacity
                               style={baseStyles.infoActionButton}
                               onPress={() => toggleFavorite(selectedPlace)}
@@ -1257,29 +1289,62 @@ const s = StyleSheet.create({
     marginTop: 6,
   },
   badge: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#00b50677",
     color: "#fff",
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: 6,
     fontSize: 12,
+    fontWeight: "600",
+  },
+  websiteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: "#f0f8ff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#007AFF",
+  },
+  websiteButtonText: {
+    color: "#007AFF",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  websiteButtonLarge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  websiteButtonLargeText: {
+    color: "#fff",
+    fontSize: 16,
     fontWeight: "600",
   },
 })
 
 const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[]) => {
-  logv("[v0] === getFilteredBadges DEBUG ===")
-  logv("[v0] Input dietaryCategories:", dietaryCategories)
-  logv("[v0] Input selectedFilters:", selectedFilters)
+  console.log("[v0] === getFilteredBadges DEBUG ===")
+  console.log("[v0] Input dietaryCategories:", dietaryCategories)
+  console.log("[v0] Input selectedFilters:", selectedFilters)
 
   // Always return something, never undefined or empty unexpectedly
   if (!dietaryCategories || dietaryCategories.length === 0) {
-    logv("[v0] No dietary categories available, returning empty array")
+    console.log("[v0] No dietary categories available, returning empty array")
     return []
   }
 
   if (selectedFilters.length === 0) {
-    logv("[v0] No filters selected (Recomendados mode), showing all badges")
+    console.log("[v0] No filters selected (Recomendados mode), showing all badges")
     return dietaryCategories
   }
 
@@ -1321,12 +1386,12 @@ const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[
         matches = true
       }
 
-      logv("[v0] Filter:", filter, "vs Category:", category, "-> Match:", matches)
+      console.log("[v0] Filter:", filter, "vs Category:", category, "-> Match:", matches)
       return matches
     })
   })
 
-  logv("[v0] Final result:", matchingCategories)
-  logv("[v0] === END DEBUG ===")
+  console.log("[v0] Final result:", matchingCategories)
+  console.log("[v0] === END DEBUG ===")
   return matchingCategories
 }

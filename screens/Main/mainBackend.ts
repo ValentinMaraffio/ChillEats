@@ -3,7 +3,7 @@ import * as Location from "expo-location"
 import { Alert } from "react-native"
 
 // Constants
-export const GOOGLE_API_KEY = "AIzaSyAf_jsZw6lt89DiMQ2pG_fwl8ckq24pRAU"
+export const GOOGLE_API_KEY = "AIzaSyAf_jsZw6lt89DiMQ2pG_fwl8ckq24pRAU "
 
 // Interfaces
 export interface Place {
@@ -20,6 +20,7 @@ export interface Place {
   vicinity?: string
   photos?: { photo_reference: string; height: number; width: number }[]
   dietaryCategories?: string[]
+  website?: string // Added website property to support official website links
 }
 
 // 🔍 Búsqueda filtrada por tipo de restricción (sin TACC, vegano, etc.)
@@ -42,6 +43,7 @@ export const searchFilteredRestaurants = async (
           query,
           location: `${latitude},${longitude}`,
           radius,
+          fields: "place_id,name,geometry,rating,user_ratings_total,vicinity,photos,website",
           key: GOOGLE_API_KEY,
         },
       })
@@ -123,6 +125,7 @@ export const searchPlaces = async (searchText: string, location: Location.Locati
         query: searchText,
         location: `${location.latitude},${location.longitude}`,
         radius: 5000,
+        fields: "place_id,name,geometry,rating,user_ratings_total,vicinity,photos,website",
         key: GOOGLE_API_KEY,
       },
     })
@@ -157,7 +160,7 @@ export const getPlaceDetails = async (placeId: string): Promise<Place | null> =>
     const detailResponse = await axios.get(`https://maps.googleapis.com/maps/api/place/details/json`, {
       params: {
         place_id: placeId,
-        fields: "name,rating,user_ratings_total,geometry,photos",
+        fields: "name,rating,user_ratings_total,geometry,photos,website", // Added website field to retrieve official website URLs
         key: GOOGLE_API_KEY,
       },
     })
@@ -175,6 +178,7 @@ export const getPlaceDetails = async (placeId: string): Promise<Place | null> =>
         },
       },
       photos: result.photos || [],
+      website: result.website, // Include website URL in returned place data
     }
   } catch (error) {
     Alert.alert("Error", "No se pudo obtener la información del lugar")
