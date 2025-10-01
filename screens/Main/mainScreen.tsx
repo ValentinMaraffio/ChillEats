@@ -1195,103 +1195,153 @@ export default function MainScreenV2() {
                       </View>
                     </View>
 
-                    <View style={{ marginBottom: 15 }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: width * 0.06, fontWeight: "bold" }}>{selectedPlace.name}</Text>
-                        </View>
-                        <View style={{ alignItems: "flex-end" }}>
-                          <Text style={{ fontSize: width * 0.04, color: "#333", fontWeight: "600" }}>
-                            ⭐ {selectedPlace.rating}
-                          </Text>
-                        </View>
+                    <View style={{ marginBottom: 16 }}>
+                      {/* Name */}
+                      <Text style={{ fontSize: 24, fontWeight: "bold", color: "#333", marginBottom: 4 }}>
+                        {selectedPlace.name}
+                      </Text>
+
+                      {/* Address */}
+                      <Text style={{ fontSize: 14, color: "#666", marginBottom: 8 }}>
+                        {selectedPlace.formatted_address || selectedPlace.vicinity || "Dirección no disponible"}
+                      </Text>
+
+                      {/* Rating and Review Count */}
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                        <FontAwesome name="star" size={16} color="#FFD700" />
+                        <Text style={{ fontSize: 16, fontWeight: "bold", color: "#333", marginLeft: 4 }}>
+                          {selectedPlace.rating || "N/A"}
+                        </Text>
+                        <Text style={{ fontSize: 14, color: "#666", marginLeft: 4 }}>
+                          ({selectedPlace.user_ratings_total || 0} reseñas)
+                        </Text>
                       </View>
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          marginTop: 10,
-                        }}
-                      >
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                          {(() => {
-                            const effectiveFilters =
-                              badgeFiltersOverride !== null ? badgeFiltersOverride : selectedFilters
 
-                            if (badgeFiltersOverride !== null && effectiveFilters.length === 0) {
-                              return null
-                            }
+                      {/* Tags/Badges */}
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                        {(() => {
+                          const effectiveFilters =
+                            badgeFiltersOverride !== null ? badgeFiltersOverride : selectedFilters
 
-                            if (!selectedPlace.dietaryCategories || selectedPlace.dietaryCategories.length === 0) {
-                              return (
-                                <Text
-                                  style={{
-                                    backgroundColor: "#eee",
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    borderRadius: 12,
-                                    fontSize: width * 0.038,
-                                  }}
-                                >
-                                  Restaurante
-                                </Text>
-                              )
-                            }
+                          if (badgeFiltersOverride !== null && effectiveFilters.length === 0) {
+                            return null
+                          }
 
-                            const filtered =
-                              effectiveFilters.length === 0
-                                ? selectedPlace.dietaryCategories
-                                : getFilteredBadges(selectedPlace.dietaryCategories, effectiveFilters)
-
-                            if (filtered.length === 0) {
-                              return (
-                                <Text
-                                  style={{
-                                    backgroundColor: "#eee",
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
-                                    borderRadius: 12,
-                                    fontSize: width * 0.038,
-                                  }}
-                                >
-                                  Restaurante
-                                </Text>
-                              )
-                            }
-
-                            return filtered.map((category: string, index: number) => (
-                              <Text
-                                key={index}
+                          if (!selectedPlace.dietaryCategories || selectedPlace.dietaryCategories.length === 0) {
+                            return (
+                              <View
                                 style={{
-                                  backgroundColor: "#00b50677",
-                                  color: "#fff",
-                                  paddingHorizontal: 10,
+                                  backgroundColor: "#FFF3CD",
+                                  paddingHorizontal: 12,
                                   paddingVertical: 6,
-                                  borderRadius: 12,
-                                  fontSize: width * 0.038,
+                                  borderRadius: 16,
                                 }}
                               >
+                                <Text style={{ color: "#856404", fontSize: 13, fontWeight: "600" }}>Restaurante</Text>
+                              </View>
+                            )
+                          }
+
+                          const filtered =
+                            effectiveFilters.length === 0
+                              ? selectedPlace.dietaryCategories
+                              : getFilteredBadges(selectedPlace.dietaryCategories, effectiveFilters)
+
+                          if (filtered.length === 0) {
+                            return (
+                              <View
+                                style={{
+                                  backgroundColor: "#FFF3CD",
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 6,
+                                  borderRadius: 16,
+                                }}
+                              >
+                                <Text style={{ color: "#856404", fontSize: 13, fontWeight: "600" }}>Restaurante</Text>
+                              </View>
+                            )
+                          }
+
+                          return filtered.map((category: string, index: number) => (
+                            <View
+                              key={index}
+                              style={{
+                                backgroundColor: "#D4EDDA",
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: 16,
+                              }}
+                            >
+                              <Text style={{ color: "#155724", fontSize: 13, fontWeight: "600" }}>
                                 {getDietaryDisplayLabel(category)}
                               </Text>
-                            ))
-                          })()}
-                        </View>
-                        <View style={{ alignItems: "flex-end" }}>
-                          {location && (
-                            <Text style={{ fontSize: width * 0.04, color: "#333" }}>
-                              🚶{" "}
-                              {calculateDistance(
-                                location.latitude,
-                                location.longitude,
-                                selectedPlace.geometry.location.lat,
-                                selectedPlace.geometry.location.lng,
-                              ).toFixed(1)}{" "}
-                              km
-                            </Text>
-                          )}
-                        </View>
+                            </View>
+                          ))
+                        })()}
                       </View>
+                    </View>
+
+                    <View style={{ flexDirection: "row", justifyContent: "space-around", marginBottom: 20 }}>
+                      <TouchableOpacity
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 30,
+                          backgroundColor: "#FF9500",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 3.84,
+                          elevation: 3,
+                        }}
+                        onPress={() => toggleFavorite(selectedPlace)}
+                      >
+                        <FontAwesome name={isFavorite(selectedPlace) ? "heart" : "heart-o"} size={24} color="#fff" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 30,
+                          backgroundColor: "#FFF",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 3.84,
+                          elevation: 3,
+                          borderWidth: 1,
+                          borderColor: "#f0f0f0",
+                        }}
+                        onPress={handleDirections}
+                      >
+                        <Ionicons name="navigate" size={24} color="#FF9500" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={{
+                          width: 60,
+                          height: 60,
+                          borderRadius: 30,
+                          backgroundColor: "#FFF",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.15,
+                          shadowRadius: 3.84,
+                          elevation: 3,
+                          borderWidth: 1,
+                          borderColor: "#f0f0f0",
+                        }}
+                        onPress={handleShare}
+                      >
+                        <Ionicons name="share-social" size={24} color="#FF9500" />
+                      </TouchableOpacity>
                     </View>
 
                     <View style={baseStyles.tabContainer}>
@@ -1318,32 +1368,131 @@ export default function MainScreenV2() {
 
                     <View style={[baseStyles.tabContent, { flex: 1 }]}>
                       {activeTab === "info" ? (
-                        <View style={[baseStyles.infoTabContent, { justifyContent: "flex-start", paddingTop: 20 }]}>
+                        <ScrollView
+                          style={{ flex: 1 }}
+                          contentContainerStyle={{ paddingTop: 20, paddingBottom: 40 }}
+                          showsVerticalScrollIndicator={false}
+                        >
+                          {/* Horarios Section */}
+                          <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                            <View
+                              style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: "#FFF3E0",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                marginRight: 12,
+                              }}
+                            >
+                              <Ionicons name="time-outline" size={22} color="#FF9500" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 }}>
+                                Horarios
+                              </Text>
+                              <Text style={{ fontSize: 14, fontWeight: "600", color: "#28A745" }}>Abierto ahora</Text>
+                            </View>
+                          </View>
+
+                          {/* Website Section */}
                           {selectedPlace.website && (
-                            <TouchableOpacity style={s.websiteButtonLarge} onPress={handleWebsite}>
-                              <Ionicons name="globe-outline" size={20} color="#fff" />
-                              <Text style={s.websiteButtonLargeText}>Visitar Sitio Web Oficial</Text>
+                            <TouchableOpacity
+                              style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}
+                              onPress={handleWebsite}
+                            >
+                              <View
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 20,
+                                  backgroundColor: "#FFF3E0",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  marginRight: 12,
+                                }}
+                              >
+                                <Ionicons name="globe-outline" size={22} color="#FF9500" />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 }}>
+                                  Sitio web
+                                </Text>
+                                <Text style={{ fontSize: 14, fontWeight: "600", color: "#FF9500" }}>
+                                  Tocar para visitar
+                                </Text>
+                              </View>
                             </TouchableOpacity>
                           )}
-                          <View style={[baseStyles.infoActionButtons, { marginTop: selectedPlace.website ? 20 : 10 }]}>
-                            <TouchableOpacity
-                              style={baseStyles.infoActionButton}
-                              onPress={() => toggleFavorite(selectedPlace)}
-                            >
-                              <FontAwesome
-                                name={isFavorite(selectedPlace) ? "heart" : "heart-o"}
-                                size={20}
-                                color="#ff9500"
-                              />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={baseStyles.infoActionButton} onPress={handleDirections}>
-                              <Ionicons name="navigate" size={20} color="#ff9500" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={baseStyles.infoActionButton} onPress={handleShare}>
-                              <Ionicons name="share-social" size={20} color="#ff9500" />
-                            </TouchableOpacity>
+
+                          {/* Distance Section */}
+                          {location && (
+                            <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 20 }}>
+                              <View
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 20,
+                                  backgroundColor: "#FFF3E0",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  marginRight: 12,
+                                }}
+                              >
+                                <Ionicons name="walk-outline" size={22} color="#FF9500" />
+                              </View>
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 }}>
+                                  Distancia
+                                </Text>
+                                <Text style={{ fontSize: 14, color: "#666" }}>
+                                  {calculateDistance(
+                                    location.latitude,
+                                    location.longitude,
+                                    selectedPlace.geometry.location.lat,
+                                    selectedPlace.geometry.location.lng,
+                                  ).toFixed(1)}{" "}
+                                  km
+                                </Text>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Detailed Schedule Section */}
+                          <View style={{ marginTop: 10 }}>
+                            <Text style={{ fontSize: 18, fontWeight: "bold", color: "#333", marginBottom: 12 }}>
+                              Horarios detallados
+                            </Text>
+                            <View style={{ backgroundColor: "#f8f8f8", borderRadius: 12, padding: 16 }}>
+                              {[
+                                { day: "Monday", label: "Lunes", hours: "10:00 AM – 11:00 PM" },
+                                { day: "Tuesday", label: "Martes", hours: "10:00 AM – 11:00 PM" },
+                                { day: "Wednesday", label: "Miércoles", hours: "10:00 AM – 11:00 PM" },
+                                { day: "Thursday", label: "Jueves", hours: "10:00 AM – 11:00 PM" },
+                                { day: "Friday", label: "Viernes", hours: "10:00 AM – 11:00 PM" },
+                                { day: "Saturday", label: "Sábado", hours: "11:30 AM – 11:30 PM" },
+                                { day: "Sunday", label: "Domingo", hours: "11:30 AM – 11:30 PM" },
+                              ].map((schedule, index) => (
+                                <View
+                                  key={schedule.day}
+                                  style={{
+                                    flexDirection: "row",
+                                    justifyContent: "space-between",
+                                    paddingVertical: 8,
+                                    borderBottomWidth: index < 6 ? 1 : 0,
+                                    borderBottomColor: "#e0e0e0",
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 14, color: "#666" }}>{schedule.label}:</Text>
+                                  <Text style={{ fontSize: 14, color: "#333", fontWeight: "500" }}>
+                                    {schedule.hours}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
                           </View>
-                        </View>
+                        </ScrollView>
                       ) : (
                         <View style={{ flex: 1 }}>
                           <NativeViewGestureHandler ref={reviewsScrollRef} disallowInterruption>
