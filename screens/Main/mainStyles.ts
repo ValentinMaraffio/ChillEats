@@ -1,5 +1,11 @@
 import { StyleSheet, Dimensions } from "react-native"
 
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
+
+
 const { width, height } = Dimensions.get("window")
 
 export const styles = StyleSheet.create({
@@ -346,4 +352,123 @@ export const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 2,
   },
+ reviewCard: {
+  backgroundColor: "#f8f8f8",
+  borderRadius: wp("5%"),
+  padding: wp("4%"),
+  marginBottom: hp("2%"),
+  elevation: 2,
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.1,
+  shadowRadius: 2,
+},
+reviewHeader: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: hp("1%"),
+},
+reviewRatingContainer: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: hp("1%"),
+},
+reviewText: {
+  fontSize: wp("3.8%"),
+  color: "#333",
+  marginBottom: hp("1.5%"),
+  lineHeight: hp("2.5%"),
+},
+reviewTags: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+},
+reviewTag: {
+  backgroundColor: "#ff9500",
+  paddingHorizontal: wp("2%"),
+  paddingVertical: hp("0.5%"),
+  borderRadius: wp("3%"),
+  marginRight: wp("2%"),
+  marginBottom: hp("0.5%"),
+},
+reviewTagText: {
+  fontSize: wp("3%"),
+  color: "white",
+},
+emptyReviews: {
+  alignItems: "center",
+  justifyContent: "center",
+  paddingVertical: hp("10%"),
+},
+emptyReviewsText: {
+  fontSize: wp("4%"),
+  color: "#999",
+  textAlign: "center",
+  marginTop: hp("2%"),
+},
+addReviewCard: {
+backgroundColor: "#f8f8f8",
+borderRadius: wp("5%"),
+padding: wp("4%"),
+marginBottom: hp("2%"),
+elevation: 2,
+shadowColor: "#000",
+shadowOffset: { width: 0, height: 1 },
+shadowOpacity: 0.08,
+shadowRadius: 2,
+},
+addReviewTitle: {
+fontWeight: "800",
+fontSize: wp("4.2%"),
+color: "#333",
+marginBottom: hp("1%"),
+},
+addReviewStarsRow: {
+flexDirection: "row",
+alignItems: "center",
+marginBottom: hp("1%"),
+},
+addReviewHint: {
+marginLeft: 8,
+color: "#555",
+fontSize: wp("3.4%"),
+},
+addReviewInput: {
+minHeight: hp("12%"),
+borderWidth: 1,
+borderColor: "#eee",
+borderRadius: wp("3.5%"),
+paddingHorizontal: wp("3%"),
+paddingVertical: hp("1%"),
+backgroundColor: "#fff",
+marginTop: hp("1%"),
+marginBottom: hp("1%"),
+textAlignVertical: "top",
+color: "#333",
+fontSize: wp("3.8%"),
+},
+addReviewTagsInput: {
+height: hp("6%"),
+borderWidth: 1,
+borderColor: "#eee",
+borderRadius: wp("3.5%"),
+paddingHorizontal: wp("3%"),
+backgroundColor: "#fff",
+marginBottom: hp("1.5%"),
+color: "#333",
+fontSize: wp("3.6%"),
+},
+addReviewButton: {
+backgroundColor: "#FF9500",
+paddingVertical: hp("1.8%"),
+borderRadius: wp("3.5%"),
+alignItems: "center",
+},
+addReviewButtonText: {
+color: "#fff",
+fontWeight: "800",
+fontSize: wp("3.8%"),
+},
 })

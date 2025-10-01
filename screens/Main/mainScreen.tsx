@@ -33,7 +33,7 @@ import Animated, {
   clamp,
   useAnimatedGestureHandler,
 } from "react-native-reanimated"
-import { PanGestureHandler } from "react-native-gesture-handler"
+import { PanGestureHandler, ScrollView, NativeViewGestureHandler } from "react-native-gesture-handler"
 import { StatusBar } from "expo-status-bar"
 import { useFocusEffect, useRoute } from "@react-navigation/native"
 import { useFavorites } from "../../context/favoritesContext"
@@ -43,6 +43,9 @@ import { useFilters } from "../../context/filtersContext"
 import { useNavigation } from "@react-navigation/native"
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs"
 import type { TabParamList } from "../../types/navigation"
+import { inferDietaryCategories } from "../Favorites/favoritesBackend"
+import { getPrimaryPhotoUrl } from "../Favorites/favoritesBackend"
+import axios from "axios"
 
 // backend existente
 import {
@@ -61,6 +64,13 @@ import {
 // estilos ORIGINALES para bottom sheet + carousel
 import { styles as baseStyles } from "./mainStyles"
 
+declare const __DEV__: boolean
+
+const VERBOSE = false
+const logv = (...args: any[]) => {
+  if (__DEV__ && VERBOSE) console.log(...args)
+}
+
 const { width, height } = Dimensions.get("window")
 const MAX_PLACES_LIMIT = 15
 const INFINITE_COPIES = 2
@@ -77,9 +87,9 @@ function CustomPin({ highlighted = false }: { highlighted?: boolean }) {
           width: circle,
           height: circle,
           borderRadius: circle / 2,
-          backgroundColor: "#FF9500", // naranja
+          backgroundColor: "#FF9500",
           borderWidth: 2,
-          borderColor: "#000", // borde negro
+          borderColor: "#000",
         }}
       />
       <View
@@ -91,12 +101,21 @@ function CustomPin({ highlighted = false }: { highlighted?: boolean }) {
           borderTopWidth: tip,
           borderLeftColor: "transparent",
           borderRightColor: "transparent",
-          borderTopColor: "#FF9500", // punta naranja
+          borderTopColor: "#FF9500",
           transform: [{ translateY: -1 }],
         }}
       />
     </View>
   )
+}
+
+type Review = {
+  id: string
+  rating: number
+  date: string
+  text: string
+  tags: string[]
+  user: { name: string; profileImage: string | null }
 }
 
 export default function MainScreenV2() {
@@ -107,10 +126,9 @@ export default function MainScreenV2() {
     nav.navigate("Map")
   }, [nav])
 
-  const { user } = useAuth()
-  const { addFavorite, removeFavorite, isFavorite } = useFavorites()
+  const { user, token } = useAuth()
+  const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites()
 
-  //Estilo mapa
   const ONLY_BUSINESS_STYLE = [
     { featureType: "poi.attraction", stylers: [{ visibility: "off" }] },
     { featureType: "poi.government", stylers: [{ visibility: "off" }] },
@@ -119,17 +137,15 @@ export default function MainScreenV2() {
     { featureType: "poi.place_of_worship", stylers: [{ visibility: "off" }] },
     { featureType: "poi.school", stylers: [{ visibility: "off" }] },
     { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
-    { featureType: "poi.business", stylers: [{ visibility: "on" }] }, // 👈 dejamos solo negocios
+    { featureType: "poi.business", stylers: [{ visibility: "on" }] },
   ]
 
-  // ubicación
+  const [badgeFiltersOverride, setBadgeFiltersOverride] = useState<string[] | null>(null)
+
   const [location, setLocation] = useState<Location.LocationObjectCoords | null>(null)
   const [isLoadingLocation, setIsLoadingLocation] = useState(true)
-
-  // modos
   const [mode, setMode] = useState<"feed" | "map">("feed")
 
-  // forzar modo según la tab activa
   useFocusEffect(
     useCallback(() => {
       const name = route?.name as string
@@ -137,31 +153,25 @@ export default function MainScreenV2() {
     }, [route?.name]),
   )
 
-  // buscador / predicciones
   const [searchText, setSearchText] = useState("")
   const [predictions, setPredictions] = useState<any[]>([])
 
-  // filtros
   const { selectedFilters, setSelectedFilters, toggleFilter, DEFAULT_FILTER_KEY } = useFilters()
   const onToggleFilter = (key: string) => {
     if (key === DEFAULT_FILTER_KEY) {
       setSelectedFilters([])
       return
     }
-
-    // Toggle the filter - if it's selected, remove it; if not, add it
     setSelectedFilters((prev) => {
       const newFilters = prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
       return newFilters
     })
   }
 
-  // data
   const [isFetching, setIsFetching] = useState(false)
   const [places, setPlaces] = useState<Place[]>([])
   const [recommended, setRecommended] = useState<Place[]>([])
 
-  // mapa + carousel ORIGINALES
   const [nearbyPlacesList, setNearbyPlacesList] = useState<Place[]>([])
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null)
   const [infiniteData, setInfiniteData] = useState<Place[]>([])
@@ -176,7 +186,6 @@ export default function MainScreenV2() {
   const SIDE_SPACING = (width - ITEM_WIDTH) / 2
   const isKeyboardVisible = useKeyboardVisibility()
 
-  // bottom sheet ORIG
   const [showBottomSheet, setShowBottomSheet] = useState(false)
   const translateY = useSharedValue(height)
   const snapPoints = { expanded: 0, middle: height * 0.4, closed: height }
@@ -185,14 +194,102 @@ export default function MainScreenV2() {
   const needsRepositioning = useRef(false)
   const [activeTab, setActiveTab] = useState<"info" | "reviews">("info")
 
-  // visor de imágenes
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [viewerPhotos, setViewerPhotos] = useState<Array<{ photo_reference: string; height: number; width: number }>>(
     [],
   )
 
+  const [placeReviews, setPlaceReviews] = useState<Review[]>([])
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false)
+  const [newReviewRating, setNewReviewRating] = useState<number>(0)
+  const [newReviewText, setNewReviewText] = useState<string>("")
+  const [newReviewTags, setNewReviewTags] = useState<string>("")
+  const reviewsScrollRef = useRef(null)
+
   const mapRef = useRef<MapView>(null)
+
+  const renderStars = (rating: number, onPressStar?: (n: number) => void) => {
+    const arr = []
+    for (let i = 1; i <= 5; i++) {
+      arr.push(
+        <TouchableOpacity
+          key={i}
+          activeOpacity={onPressStar ? 0.6 : 1}
+          onPress={() => onPressStar && onPressStar(i)}
+          style={{ marginRight: 2 }}
+        >
+          <FontAwesome name={i <= rating ? "star" : "star-o"} size={18} color={i <= rating ? "#FFD700" : "#ccc"} />
+        </TouchableOpacity>,
+      )
+    }
+    return <View style={{ flexDirection: "row" }}>{arr}</View>
+  }
+
+  const fetchPlaceReviews = useCallback(async () => {
+    if (!selectedPlace?.place_id) return
+    try {
+      setIsLoadingReviews(true)
+      const res = await axios.get(`http://172.16.1.95:8000/api/reviews/place/${selectedPlace.place_id}`)
+      const transformed = (res.data?.reviews ?? []).map((r: any) => ({
+        id: r._id,
+        rating: r.rating,
+        date: new Date(r.createdAt).toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }),
+        text: r.comment,
+        tags: r.tags ?? [],
+        user: {
+          name: r.userId?.name || "Anónimo",
+          profileImage: r.userId?.profileImage || null,
+        },
+      })) as Review[]
+      setPlaceReviews(transformed)
+    } catch (e) {
+      console.error("Error cargando reseñas:", e)
+    } finally {
+      setIsLoadingReviews(false)
+    }
+  }, [selectedPlace])
+
+  const submitReview = async () => {
+    if (!selectedPlace?.place_id) return
+    if (!user) {
+      Alert.alert("Iniciá sesión", "Necesitás estar logueado para publicar una reseña.")
+      return
+    }
+    if (newReviewRating === 0 || newReviewText.trim().length < 3) {
+      Alert.alert("Faltan datos", "Elegí una puntuación y escribí un comentario.")
+      return
+    }
+    try {
+      const payload = {
+        rating: newReviewRating,
+        comment: newReviewText.trim(),
+        tags: newReviewTags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        placeId: selectedPlace.place_id,
+        placeName: selectedPlace.name ?? "Lugar sin nombre",
+        images: [],
+      }
+      await axios.post(`http://172.16.1.95:8000/api/reviews/create`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      setNewReviewRating(0)
+      setNewReviewText("")
+      setNewReviewTags("")
+      fetchPlaceReviews()
+      Alert.alert("¡Gracias!", "Tu reseña fue publicada.")
+    } catch (e) {
+      console.error("Error publicando reseña:", e)
+      Alert.alert("Error", "No se pudo publicar la reseña.")
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === "reviews") fetchPlaceReviews()
+  }, [activeTab, selectedPlace, fetchPlaceReviews])
 
   const flyTo = useCallback((lat: number, lng: number, fast = false) => {
     mapRef.current?.animateToRegion(
@@ -213,12 +310,9 @@ export default function MainScreenV2() {
   }, [nearbyPlacesList, flyTo])
 
   useEffect(() => {
-    // Cada vez que entro al mapa o cambian filtros,
-    // aseguro que el mapa vea la colección correcta sin refrescar a mano.
     if (mode !== "map") return
     if (singlePlaceLock.current) return
 
-    // Prioridad: resultados de búsqueda -> recomendados (que ya respetan selectedFilters)
     const collection = places.length > 0 ? places : recommended.length > 0 ? recommended : []
 
     if (collection.length > 0) {
@@ -226,7 +320,6 @@ export default function MainScreenV2() {
       setSelectedPlace(collection[0])
       setIsCardScrollable(collection.length > 1)
       setRealCurrentIndex(0)
-      // centrar cámara en la primera card
       setTimeout(() => {
         if (collection[0]?.geometry?.location) {
           flyTo(collection[0].geometry.location.lat, collection[0].geometry.location.lng, true)
@@ -235,9 +328,6 @@ export default function MainScreenV2() {
     }
   }, [mode, selectedFilters, places, recommended])
 
-  // =========================
-  // Ubicación inicial
-  // =========================
   useEffect(() => {
     ;(async () => {
       setIsLoadingLocation(true)
@@ -247,9 +337,6 @@ export default function MainScreenV2() {
     })()
   }, [])
 
-  // =========================
-  // Recomendados + filtros
-  // =========================
   const fetchRecommended = useCallback(async () => {
     if (!location) return
     try {
@@ -258,12 +345,10 @@ export default function MainScreenV2() {
       let results: Place[] = []
 
       if (selectedFilters.length > 0) {
-        // When filters are selected, only get filtered results
-        console.log("[v0] Fetching filtered restaurants for filters:", selectedFilters)
+        logv("[v0] Fetching filtered restaurants for filters:", selectedFilters)
         results = await searchFilteredRestaurants(selectedFilters, location.latitude, location.longitude)
       } else {
-        // When no filters (Recomendados), get regular restaurants
-        console.log("[v0] Fetching regular restaurants (Recomendados mode)")
+        logv("[v0] Fetching regular restaurants (Recomendados mode)")
         results = await searchPlaces("restaurant", location)
       }
 
@@ -282,13 +367,7 @@ export default function MainScreenV2() {
         }
       }
 
-      console.log(
-        "[v0] Final results with dietary categories:",
-        take.map((p) => ({ name: p.name, categories: p.dietaryCategories })),
-      )
-
       setRecommended(take)
-      // preparar mapa/carrusel
       setNearbyPlacesList(take.slice(0, MAX_PLACES_LIMIT))
       setSelectedPlace(take[0] || null)
       setRealCurrentIndex(0)
@@ -303,9 +382,6 @@ export default function MainScreenV2() {
     if (location) fetchRecommended()
   }, [location, selectedFilters])
 
-  // =========================
-  // Buscador + Autocompletado
-  // =========================
   const onSearchSubmit = useCallback(async () => {
     if (!location) return
     if (!searchText.trim()) {
@@ -317,7 +393,6 @@ export default function MainScreenV2() {
     const res = await searchPlaces(searchText, location)
     const ordered = sortPlacesByDistance(res, location).slice(0, 20)
     setPlaces(ordered)
-    // general → mapa + carrusel
     setNearbyPlacesList(ordered.slice(0, MAX_PLACES_LIMIT))
     setSelectedPlace(ordered[0] || null)
     setRealCurrentIndex(0)
@@ -358,7 +433,6 @@ export default function MainScreenV2() {
     }
   }
 
-  // FILTROS
   const availableFilters = [
     { key: DEFAULT_FILTER_KEY, label: "Recomendados" },
     { key: "sin tacc", label: "Sin TACC" },
@@ -380,9 +454,6 @@ export default function MainScreenV2() {
     [selectedFilters, DEFAULT_FILTER_KEY],
   )
 
-  // =========================
-  // Helpers bottom sheet + carrusel (ORIG)
-  // =========================
   const createInfiniteData = useCallback((data: Place[]) => {
     if (data.length <= 1) return data
     const copies = INFINITE_COPIES
@@ -507,6 +578,60 @@ export default function MainScreenV2() {
   }, [nearbyPlacesList])
 
   useEffect(() => {
+    const params = (route?.params ?? {}) as {
+      carouselSource?: "favorites"
+      initialPlaceId?: string
+      favoriteIds?: string[]
+      showDietBadge?: boolean
+      badgeFilters?: string[]
+    }
+
+    if (params.carouselSource === "favorites" && Array.isArray(params.favoriteIds) && params.favoriteIds.length > 0) {
+      singlePlaceLock.current = true
+      setMode("map")
+
+      if (params.showDietBadge) {
+        setBadgeFiltersOverride(params.badgeFilters ?? [])
+      } else {
+        setBadgeFiltersOverride([])
+      }
+
+      const favList = favorites.filter((p: any) => params.favoriteIds!.includes(p.place_id ?? p.id))
+      const ordered = params
+        .favoriteIds!.map((id) => favList.find((p: any) => (p.place_id ?? p.id) === id))
+        .filter(Boolean) as Place[]
+
+      const subset = ordered.slice(0, MAX_PLACES_LIMIT)
+      setNearbyPlacesList(subset)
+
+      const idx = Math.max(
+        0,
+        subset.findIndex((p) => (p.place_id ?? (p as any).id) === params.initialPlaceId),
+      )
+      setSelectedPlace(subset[idx] ?? subset[0] ?? null)
+      setIsCardScrollable(subset.length > 1)
+      setRealCurrentIndex(idx)
+
+      const center = subset[idx]?.geometry?.location
+      if (center?.lat && center?.lng) {
+        setTimeout(() => {
+          mapRef.current?.animateToRegion(
+            {
+              latitude: center.lat,
+              longitude: center.lng,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            },
+            300,
+          )
+        }, 0)
+      }
+    } else {
+      setBadgeFiltersOverride(null)
+    }
+  }, [route?.params, favorites])
+
+  useEffect(() => {
     if (!showBottomSheet && needsRepositioning.current && infiniteData.length > 0) {
       const t = setTimeout(() => {
         scrollToIndex(currentIndex, false)
@@ -524,13 +649,39 @@ export default function MainScreenV2() {
     }
   }
 
-  const toggleFavorite = (place: Place) => {
-    isFavorite(place) ? removeFavorite(place) : addFavorite(place)
+  const buildFavoritePayload = (place: Place): Place => {
+    const dietaryCategories = inferDietaryCategories(place)
+    const primaryPhotoUrl = place?.photos?.[0]?.photo_reference
+      ? getPhotoUrl(place.photos[0].photo_reference, 800)
+      : getPrimaryPhotoUrl(place)
+    return { ...place, dietaryCategories, primaryPhotoUrl }
+  }
+
+  const toggleFavorite = async (place: Place) => {
+    if (isFavorite(place)) {
+      removeFavorite(place)
+      return
+    }
+
+    let base: Place = place
+    let tags = inferDietaryCategories(base)
+
+    if (!tags || tags.length === 0) {
+      const det = await getPlaceDetails(place.place_id)
+      if (det) {
+        base = { ...det, rating: det.rating ?? place.rating, photos: det.photos ?? place.photos }
+        tags = inferDietaryCategories(base)
+      }
+    }
+
+    const enriched = buildFavoritePayload({ ...base, dietaryCategories: tags })
+    addFavorite(enriched)
   }
 
   const handleScrollBegin = () => {
     if (!isCardScrollable) return
   }
+
   const handleScrollEnd = async (e: any) => {
     if (nearbyPlacesList.length <= 1 || !isCardScrollable || isInfiniteScrolling.current) return
     const offsetX = e.nativeEvent.contentOffset.x
@@ -544,7 +695,6 @@ export default function MainScreenV2() {
         const existingCategories = newPlace.dietaryCategories || []
         const detailedPlace = (await getPlaceDetails(newPlace.place_id)) || newPlace
 
-        // Preserve the dietary categories from the original place
         if (existingCategories.length > 0) {
           detailedPlace.dietaryCategories = existingCategories
         }
@@ -650,28 +800,31 @@ export default function MainScreenV2() {
 
                       <View style={baseStyles.badges}>
                         {(() => {
-                          console.log("[v0] Rendering badges for item:", item.name)
-                          console.log("[v0] Item dietaryCategories:", item.dietaryCategories)
-                          console.log("[v0] Current selectedFilters:", selectedFilters)
+                          const effectiveFilters =
+                            badgeFiltersOverride !== null ? badgeFiltersOverride : selectedFilters
+
+                          if (badgeFiltersOverride !== null && effectiveFilters.length === 0) {
+                            return null
+                          }
 
                           if (!item.dietaryCategories || item.dietaryCategories.length === 0) {
-                            console.log("[v0] No dietary categories, showing default badge")
                             return <Text style={baseStyles.badge}>Restaurante</Text>
                           }
 
-                          const filteredBadges = getFilteredBadges(item.dietaryCategories, selectedFilters)
-                          console.log("[v0] Filtered badges result:", filteredBadges)
+                          const filteredBadges =
+                            effectiveFilters.length === 0
+                              ? item.dietaryCategories
+                              : getFilteredBadges(item.dietaryCategories, effectiveFilters)
 
                           if (filteredBadges.length === 0) {
-                            console.log("[v0] No matching badges after filtering")
                             return <Text style={baseStyles.badge}>Restaurante</Text>
                           }
 
-                          return filteredBadges.slice(0, 3).map((category: string, index) => (
+                          return filteredBadges.slice(0, 3).map((category: string, index: number) => (
                             <Text
                               key={index}
                               style={{
-                                backgroundColor: "#00b50677",
+                                backgroundColor: "#4CAF50",
                                 color: "#fff",
                                 paddingHorizontal: 10,
                                 paddingVertical: 6,
@@ -729,9 +882,6 @@ export default function MainScreenV2() {
     )
   }
 
-  // =========================
-  // UI
-  // =========================
   if (isLoadingLocation) {
     return (
       <SafeAreaView style={s.loadingScreen}>
@@ -750,11 +900,9 @@ export default function MainScreenV2() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={{ flex: 1 }}>
-            {/* Header */}
             <View style={s.header}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}></View>
 
-              {/* Buscador */}
               <View style={s.searchWrap}>
                 <View style={s.searchBar}>
                   <Ionicons name="search" size={18} />
@@ -762,8 +910,8 @@ export default function MainScreenV2() {
                     style={s.searchInput}
                     placeholder="Buscá tu lugar ideal..."
                     value={searchText}
-                    onChangeText={onChangeText} // 👈 tu handler actual (no tocamos lógica)
-                    onSubmitEditing={onSearchSubmit} // 👈 tu submit actual
+                    onChangeText={onChangeText}
+                    onSubmitEditing={onSearchSubmit}
                     returnKeyType="search"
                   />
                   {searchText.length > 0 && (
@@ -779,7 +927,6 @@ export default function MainScreenV2() {
                   )}
                 </View>
 
-                {/* Autocompletado (dropdown superpuesto) */}
                 {predictions.length > 0 && (
                   <View style={s.predictionsBox}>
                     <FlatList
@@ -799,7 +946,6 @@ export default function MainScreenV2() {
                 )}
               </View>
 
-              {/* Filtros: horizontal */}
               <View style={{ marginTop: 10 }}>
                 <FlatList
                   horizontal
@@ -823,7 +969,6 @@ export default function MainScreenV2() {
               </View>
             </View>
 
-            {/* Contenido */}
             {mode === "feed" ? (
               <View style={{ flex: 1 }}>
                 <View style={s.sectionHeader}>
@@ -986,13 +1131,16 @@ export default function MainScreenV2() {
               </View>
             )}
 
-            {/* Bottom Sheet ORIGINAL */}
             {showBottomSheet && selectedPlace && (
-              <PanGestureHandler onGestureEvent={gestureHandler}>
-                <Animated.View style={[baseStyles.bottomSheet, bottomSheetStyle]}>
+              <PanGestureHandler
+                onGestureEvent={gestureHandler}
+                waitFor={activeTab === "reviews" ? reviewsScrollRef : undefined}
+                simultaneousHandlers={activeTab === "reviews" ? reviewsScrollRef : undefined}
+                activeOffsetY={activeTab === "reviews" ? undefined : [-20, 20]}
+              >
+                <Animated.View style={[baseStyles.bottomSheet, { height }, bottomSheetStyle]}>
                   <View style={baseStyles.bottomSheetHandle} />
                   <View style={baseStyles.bottomSheetContent}>
-                    {/* imágenes */}
                     <View style={baseStyles.imageSection}>
                       <TouchableOpacity
                         style={baseStyles.mainImageContainer}
@@ -1047,7 +1195,6 @@ export default function MainScreenV2() {
                       </View>
                     </View>
 
-                    {/* info + chips */}
                     <View style={{ marginBottom: 15 }}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <View style={{ flex: 1 }}>
@@ -1067,40 +1214,68 @@ export default function MainScreenV2() {
                           marginTop: 10,
                         }}
                       >
-                        <View style={{ flex: 1 }}>
-                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                            {selectedPlace.dietaryCategories && selectedPlace.dietaryCategories.length > 0 ? (
-                              getFilteredBadges(selectedPlace.dietaryCategories, selectedFilters).map(
-                                (category: string, index) => (
-                                  <Text
-                                    key={index}
-                                    style={{
-                                      backgroundColor: "#4CAF50",
-                                      color: "#fff",
-                                      paddingHorizontal: 10,
-                                      paddingVertical: 6,
-                                      borderRadius: 12,
-                                      fontSize: width * 0.038,
-                                    }}
-                                  >
-                                    {getDietaryDisplayLabel(category)}
-                                  </Text>
-                                ),
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                          {(() => {
+                            const effectiveFilters =
+                              badgeFiltersOverride !== null ? badgeFiltersOverride : selectedFilters
+
+                            if (badgeFiltersOverride !== null && effectiveFilters.length === 0) {
+                              return null
+                            }
+
+                            if (!selectedPlace.dietaryCategories || selectedPlace.dietaryCategories.length === 0) {
+                              return (
+                                <Text
+                                  style={{
+                                    backgroundColor: "#eee",
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12,
+                                    fontSize: width * 0.038,
+                                  }}
+                                >
+                                  Restaurante
+                                </Text>
                               )
-                            ) : (
+                            }
+
+                            const filtered =
+                              effectiveFilters.length === 0
+                                ? selectedPlace.dietaryCategories
+                                : getFilteredBadges(selectedPlace.dietaryCategories, effectiveFilters)
+
+                            if (filtered.length === 0) {
+                              return (
+                                <Text
+                                  style={{
+                                    backgroundColor: "#eee",
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 6,
+                                    borderRadius: 12,
+                                    fontSize: width * 0.038,
+                                  }}
+                                >
+                                  Restaurante
+                                </Text>
+                              )
+                            }
+
+                            return filtered.map((category: string, index: number) => (
                               <Text
+                                key={index}
                                 style={{
-                                  backgroundColor: "#eee",
+                                  backgroundColor: "#00b50677",
+                                  color: "#fff",
                                   paddingHorizontal: 10,
                                   paddingVertical: 6,
                                   borderRadius: 12,
                                   fontSize: width * 0.038,
                                 }}
                               >
-                                Restaurante
+                                {getDietaryDisplayLabel(category)}
                               </Text>
-                            )}
-                          </View>
+                            ))
+                          })()}
                         </View>
                         <View style={{ alignItems: "flex-end" }}>
                           {location && (
@@ -1119,7 +1294,6 @@ export default function MainScreenV2() {
                       </View>
                     </View>
 
-                    {/* tabs */}
                     <View style={baseStyles.tabContainer}>
                       <TouchableOpacity
                         style={[baseStyles.tab, activeTab === "info" && baseStyles.activeTab]}
@@ -1131,7 +1305,10 @@ export default function MainScreenV2() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[baseStyles.tab, activeTab === "reviews" && baseStyles.activeTab]}
-                        onPress={() => setActiveTab("reviews")}
+                        onPress={() => {
+                          setActiveTab("reviews")
+                          translateY.value = withSpring(snapPoints.expanded, { damping: 25, stiffness: 250 })
+                        }}
                       >
                         <Text style={[baseStyles.tabText, activeTab === "reviews" && baseStyles.activeTabText]}>
                           Reseñas
@@ -1139,7 +1316,7 @@ export default function MainScreenV2() {
                       </TouchableOpacity>
                     </View>
 
-                    <View style={baseStyles.tabContent}>
+                    <View style={[baseStyles.tabContent, { flex: 1 }]}>
                       {activeTab === "info" ? (
                         <View style={[baseStyles.infoTabContent, { justifyContent: "flex-start", paddingTop: 20 }]}>
                           {selectedPlace.website && (
@@ -1168,8 +1345,95 @@ export default function MainScreenV2() {
                           </View>
                         </View>
                       ) : (
-                        <View>
-                          <Text style={baseStyles.bottomSheetText}>Reseñas de {selectedPlace.name}.</Text>
+                        <View style={{ flex: 1 }}>
+                          <NativeViewGestureHandler ref={reviewsScrollRef} disallowInterruption>
+                            <ScrollView
+                              nestedScrollEnabled
+                              keyboardShouldPersistTaps="handled"
+                              keyboardDismissMode="on-drag"
+                              contentContainerStyle={{ padding: 16, paddingBottom: 120 }}
+                              showsVerticalScrollIndicator={false}
+                            >
+                              <View style={baseStyles.addReviewCard}>
+                                <Text style={baseStyles.addReviewTitle}>Añadí tu reseña</Text>
+
+                                <View style={baseStyles.addReviewStarsRow}>
+                                  {renderStars(newReviewRating, setNewReviewRating)}
+                                  <Text style={baseStyles.addReviewHint}>{newReviewRating}/5</Text>
+                                </View>
+
+                                <TextInput
+                                  placeholder="Contanos tu experiencia…"
+                                  value={newReviewText}
+                                  onChangeText={setNewReviewText}
+                                  multiline
+                                  style={baseStyles.addReviewInput}
+                                />
+
+                                <TextInput
+                                  placeholder="Etiquetas separadas por coma (ej: sin tacc, vegano)"
+                                  value={newReviewTags}
+                                  onChangeText={setNewReviewTags}
+                                  style={baseStyles.addReviewTagsInput}
+                                />
+
+                                <TouchableOpacity onPress={submitReview} style={baseStyles.addReviewButton}>
+                                  <Text style={baseStyles.addReviewButtonText}>Publicar reseña</Text>
+                                </TouchableOpacity>
+                              </View>
+
+                              {isLoadingReviews ? (
+                                <View style={{ padding: 16, alignItems: "center" }}>
+                                  <ActivityIndicator size="small" />
+                                  <Text style={{ marginTop: 8, color: "#666" }}>Cargando reseñas…</Text>
+                                </View>
+                              ) : placeReviews.length === 0 ? (
+                                <View style={baseStyles.emptyReviews}>
+                                  <Ionicons name="document-text-outline" size={60} color="#ccc" />
+                                  <Text style={baseStyles.emptyReviewsText}>Este lugar aún no tiene reseñas.</Text>
+                                </View>
+                              ) : (
+                                <>
+                                  {placeReviews.map((review) => (
+                                    <View key={review.id} style={baseStyles.reviewCard}>
+                                      <View style={baseStyles.reviewHeader}>
+                                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                          <Image
+                                            source={{
+                                              uri:
+                                                review.user.profileImage ||
+                                                "https://cdn-icons-png.flaticon.com/512/149/149071.png",
+                                            }}
+                                            style={{ width: 36, height: 36, borderRadius: 18, marginRight: 8 }}
+                                          />
+                                          <View>
+                                            <Text style={{ fontWeight: "bold", color: "#333" }}>
+                                              {review.user.name}
+                                            </Text>
+                                            <Text style={{ fontSize: 12, color: "#999" }}>{review.date}</Text>
+                                          </View>
+                                        </View>
+                                      </View>
+
+                                      <View style={baseStyles.reviewRatingContainer}>{renderStars(review.rating)}</View>
+
+                                      <Text style={baseStyles.reviewText}>{review.text}</Text>
+
+                                      {review.tags?.length > 0 && (
+                                        <View style={baseStyles.reviewTags}>
+                                          {review.tags.map((tag, i) => (
+                                            <View key={`${review.id}-tag-${i}`} style={baseStyles.reviewTag}>
+                                              <Text style={baseStyles.reviewTagText}>{tag}</Text>
+                                            </View>
+                                          ))}
+                                        </View>
+                                      )}
+                                    </View>
+                                  ))}
+                                </>
+                              )}
+                            </ScrollView>
+                          </NativeViewGestureHandler>
                         </View>
                       )}
                     </View>
@@ -1184,9 +1448,6 @@ export default function MainScreenV2() {
   )
 }
 
-// =========================
-// Estilos locales para header/feed
-// =========================
 const s = StyleSheet.create({
   searchWrap: { marginTop: 10 },
   container: { flex: 1, backgroundColor: "#fff" },
@@ -1333,36 +1594,30 @@ const s = StyleSheet.create({
 })
 
 const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[]) => {
-  console.log("[v0] === getFilteredBadges DEBUG ===")
-  console.log("[v0] Input dietaryCategories:", dietaryCategories)
-  console.log("[v0] Input selectedFilters:", selectedFilters)
+  logv("[v0] === getFilteredBadges DEBUG ===")
+  logv("[v0] Input dietaryCategories:", dietaryCategories)
+  logv("[v0] Input selectedFilters:", selectedFilters)
 
-  // Always return something, never undefined or empty unexpectedly
   if (!dietaryCategories || dietaryCategories.length === 0) {
-    console.log("[v0] No dietary categories available, returning empty array")
+    logv("[v0] No dietary categories available, returning empty array")
     return []
   }
 
   if (selectedFilters.length === 0) {
-    console.log("[v0] No filters selected (Recomendados mode), showing all badges")
+    logv("[v0] No filters selected (Recomendados mode), showing all badges")
     return dietaryCategories
   }
 
-  // Get categories that match selected filters
   const matchingCategories = dietaryCategories.filter((category) => {
     const categoryLower = category.toLowerCase()
     return selectedFilters.some((filter) => {
       const filterLower = filter.toLowerCase()
-
-      // Check for matches - both direct and cross-category matches
       let matches = false
 
-      // Direct matches
       if (categoryLower.includes(filterLower)) {
         matches = true
       }
 
-      // Cross-category matches for Sin TACC/Celiaco
       if (
         (filterLower.includes("sin tacc") || filterLower.includes("tacc")) &&
         (categoryLower.includes("celiaco") || categoryLower.includes("celíaco"))
@@ -1377,7 +1632,6 @@ const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[
         matches = true
       }
 
-      // Vegano/Vegetariano matches
       if (filterLower.includes("vegano") && categoryLower.includes("vegano")) {
         matches = true
       }
@@ -1386,12 +1640,12 @@ const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[
         matches = true
       }
 
-      console.log("[v0] Filter:", filter, "vs Category:", category, "-> Match:", matches)
+      logv("[v0] Filter:", filter, "vs Category:", category, "-> Match:", matches)
       return matches
     })
   })
 
-  console.log("[v0] Final result:", matchingCategories)
-  console.log("[v0] === END DEBUG ===")
+  logv("[v0] Final result:", matchingCategories)
+  logv("[v0] === END DEBUG ===")
   return matchingCategories
 }

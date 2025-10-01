@@ -3,24 +3,22 @@ import * as Location from "expo-location"
 import { Alert } from "react-native"
 
 // Constants
-export const GOOGLE_API_KEY = "AIzaSyAf_jsZw6lt89DiMQ2pG_fwl8ckq24pRAU "
+export const GOOGLE_API_KEY = "AIzaSyAf_jsZw6lt89DiMQ2pG_fwl8ckq24pRAU"
 
 // Interfaces
 export interface Place {
-  place_id: string
-  name: string
-  geometry: {
-    location: {
-      lat: number
-      lng: number
-    }
-  }
-  rating?: number
-  user_ratings_total?: number
-  vicinity?: string
-  photos?: { photo_reference: string; height: number; width: number }[]
-  dietaryCategories?: string[]
-  website?: string // Added website property to support official website links
+  place_id: string;
+  name: string;
+  geometry: { location: { lat: number; lng: number } };
+  rating?: number;
+  user_ratings_total?: number;
+  vicinity?: string;
+  formatted_address?: string;   // ⬅️ nuevo
+  types?: string[];             // ⬅️ nuevo
+  photos?: { photo_reference: string; height: number; width: number }[];
+  dietaryCategories?: string[];
+  website?: string
+  primaryPhotoUrl?: string;
 }
 
 // 🔍 Búsqueda filtrada por tipo de restricción (sin TACC, vegano, etc.)
@@ -157,15 +155,19 @@ export const getPlaceAutocomplete = async (query: string, location: Location.Loc
 
 export const getPlaceDetails = async (placeId: string): Promise<Place | null> => {
   try {
-    const detailResponse = await axios.get(`https://maps.googleapis.com/maps/api/place/details/json`, {
-      params: {
-        place_id: placeId,
-        fields: "name,rating,user_ratings_total,geometry,photos,website", // Added website field to retrieve official website URLs
-        key: GOOGLE_API_KEY,
-      },
-    })
+    const detailResponse = await axios.get(
+      `https://maps.googleapis.com/maps/api/place/details/json`,
+      {
+        params: {
+          place_id: placeId,
+          // ⬇️ Pedimos más campos para poder inferir dietas
+          fields: "name,rating,user_ratings_total,geometry,photos,types,formatted_address,vicinity, website",
+          key: GOOGLE_API_KEY,
+        },
+      }
+    );
 
-    const result = detailResponse.data.result
+    const result = detailResponse.data.result;
     return {
       place_id: placeId,
       name: result.name,
@@ -178,13 +180,16 @@ export const getPlaceDetails = async (placeId: string): Promise<Place | null> =>
         },
       },
       photos: result.photos || [],
-      website: result.website, // Include website URL in returned place data
-    }
-  } catch (error) {
-    Alert.alert("Error", "No se pudo obtener la información del lugar")
-    return null
+      website: result.website,
+      types: result.types || [],                 // ⬅️ nuevo
+      formatted_address: result.formatted_address, // ⬅️ nuevo
+      vicinity: result.vicinity,                 // ⬅️ ya lo usabas en otros lados
+    };
+  } catch (e) {
+    Alert.alert("Error", "No se pudo obtener la información del lugar");
+    return null;
   }
-}
+};
 
 // Sorting and data processing
 export const sortPlacesByDistance = (places: Place[], userLocation: Location.LocationObjectCoords | null): Place[] => {

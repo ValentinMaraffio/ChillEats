@@ -17,13 +17,13 @@ import { FontAwesome, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../../context/authContext";
 import { useFavorites } from "../../context/favoritesContext";
-import type { NavigationProp } from "./favoritesBackend";
-import { getPrimaryPhotoUrl } from "./favoritesBackend"; // <<< nuevo helper
+import { getPrimaryPhotoUrl, AVAILABLE_FILTERS, matchesSelectedFilters, } from "./favoritesBackend"; // <<< nuevo helper
 import { styles, tagStyle } from "./favoritesStyles";
 import { calculateDistance } from "../Main/mainBackend";
 import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility";
 import { getPhotoUrl } from "../Main/mainBackend";
-
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { TabParamList } from "../../types/navigation"; // el mismo que usa tu Main
 
 type Place = any;
 
@@ -51,7 +51,7 @@ const Tag = ({
 );
 
 export default function FavoritesScreen() {
-  const navigation = useNavigation<NavigationProp>();
+  const navigation = useNavigation<BottomTabNavigationProp<any>>();
   const { user } = useAuth();
   const { favorites, removeFavorite } = useFavorites();
   const [userLocation, setUserLocation] =
@@ -61,12 +61,12 @@ export default function FavoritesScreen() {
   // búsqueda por nombre
   const [searchText, setSearchText] = useState("");
 
-  // chips visuales
-  const [chips, setChips] = useState({
-    celiaco: false,
-    vegetariano: false,
-    vegano: false,
-  });
+const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+const toggleFilter = (label: string) => {
+  setSelectedFilters((prev) =>
+    prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+  );
+};
 
   useEffect(() => {
     (async () => {
@@ -97,13 +97,80 @@ export default function FavoritesScreen() {
     );
   };
 
-  const filteredFavorites = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    if (!q) return favorites;
-    return favorites.filter((p: Place) =>
-      (p?.name ?? "").toLowerCase().includes(q)
-    );
-  }, [favorites, searchText]);
+  // Ordena por distancia (cerca → lejos)
+const sortedByDistance = (list: any[]) => {
+  if (!userLocation) return list;
+  return [...list].sort((a, b) => {
+    const da =
+      calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        a?.geometry?.location?.lat,
+        a?.geometry?.location?.lng
+      ) ?? Number.POSITIVE_INFINITY;
+
+    const db =
+      calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        b?.geometry?.location?.lat,
+        b?.geometry?.location?.lng
+      ) ?? Number.POSITIVE_INFINITY;
+
+    return da - db;
+  });
+};
+
+// Navegar a Main en “modo carrusel de favoritos”
+const onPressCard = (place: any) => {
+  // Tomamos la lista ya filtrada y la ordenamos por distancia
+  const ordered = sortedByDistance(filteredFavorites);
+  // Armamos sólo los IDs en el orden cerca→lejos
+  const favoriteIds = ordered
+    .map((p) => p.place_id ?? p.id)
+    .filter(Boolean);
+
+  navigation.navigate("Map", {
+    carouselSource: "favorites",
+    initialPlaceId: place.place_id ?? place.id,
+    favoriteIds,
+    showDietBadge: selectedFilters.length > 0,
+    badgeFilters: selectedFilters.length > 0 ? [...selectedFilters] : [],
+  });
+};
+
+
+const filteredFavorites = useMemo(() => {
+  let list = Array.isArray(favorites) ? [...favorites] : [];
+
+  // 1) por nombre
+  const q = searchText.trim().toLowerCase();
+  if (q) {
+    list = list.filter((p: any) => (p?.name ?? "").toLowerCase().includes(q));
+  }
+
+  // 2) por filtros dietarios
+  if (selectedFilters.length > 0) {
+    list = list.filter((p: any) => matchesSelectedFilters(p, selectedFilters));
+  }
+  
+   if (userLocation) {
+     list.sort((a: any, b: any) => {
+       const da = calculateDistance(
+         userLocation.latitude, userLocation.longitude,
+         a?.geometry?.location?.lat, a?.geometry?.location?.lng
+       ) ?? Number.POSITIVE_INFINITY;
+       const db = calculateDistance(
+        userLocation.latitude, userLocation.longitude,
+         b?.geometry?.location?.lat, b?.geometry?.location?.lng
+       ) ?? Number.POSITIVE_INFINITY;
+       return da - db;
+     });
+   }
+
+  return list;
+}, [favorites, searchText, selectedFilters, userLocation]);
+
 
   return (
     <SafeAreaView style={styles.safeAreaV2}>
@@ -134,24 +201,18 @@ export default function FavoritesScreen() {
 
         {/* Chips (solo visuales) */}
         <View style={styles.chipsRow}>
-          <Tag
-            label="Celíaco"
-            selected={chips.celiaco}
-            onPress={() => setChips((s) => ({ ...s, celiaco: !s.celiaco }))}
-          />
-          <Tag
-            label="Vegetariano"
-            selected={chips.vegetariano}
-            onPress={() =>
-              setChips((s) => ({ ...s, vegetariano: !s.vegetariano }))
-            }
-          />
-          <Tag
-            label="Vegano"
-            selected={chips.vegano}
-            onPress={() => setChips((s) => ({ ...s, vegano: !s.vegano }))}
-          />
-        </View>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+    {AVAILABLE_FILTERS.map((label) => (
+      <Tag
+        key={label}
+        label={label}
+        selected={selectedFilters.includes(label)}
+        onPress={() => toggleFilter(label)}
+      />
+    ))}
+  </ScrollView>
+</View>
+
       </View>
 
       {/* Lista */}
@@ -180,9 +241,11 @@ export default function FavoritesScreen() {
             const imageUri = getPrimaryPhotoUrl(place); // <<< usa el helper
 
             return (
-              <View
+              <TouchableOpacity
                 key={`${place?.place_id ?? place?.id ?? idx}`}
                 style={styles.cardV2}
+                activeOpacity={0.9}
+                onPress={() => onPressCard(place)}
               >
                 <Image source={{ uri: imageUri }} style={styles.cardImage} />
 
@@ -218,7 +281,7 @@ export default function FavoritesScreen() {
                     <FontAwesome name="heart" size={22} color="#ff9500" />
                   </TouchableOpacity>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>

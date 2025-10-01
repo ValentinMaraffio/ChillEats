@@ -10,6 +10,11 @@ export type RootStackParamList = {
   ForgotPassword: undefined
   ResetPassword: { email: string }
   Welcome: undefined
+  Main: {
+    carouselSource?: "favorites";
+    initialPlaceId?: string;
+    favoriteIds?: string[]; // ordenados por distancia (cerca→lejos)
+  } | undefined;
 }
 
 export type TabParamList = {
