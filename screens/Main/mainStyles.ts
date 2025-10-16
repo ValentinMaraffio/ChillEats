@@ -425,7 +425,7 @@ export const styles = StyleSheet.create({
   addReviewStarsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: hp("1%"),
+    //marginBottom: hp("1%"),
   },
   addReviewHint: {
     marginLeft: 8,
@@ -440,8 +440,8 @@ export const styles = StyleSheet.create({
     paddingHorizontal: wp("3%"),
     paddingVertical: hp("1%"),
     backgroundColor: "#fff",
-    marginTop: hp("1%"),
-    marginBottom: hp("1%"),
+    marginTop: hp("0.7%"),
+    marginBottom: hp("0.7%"),
     textAlignVertical: "top",
     color: "#333",
     fontSize: wp("3.8%"),
@@ -468,4 +468,83 @@ export const styles = StyleSheet.create({
     fontWeight: "800",
     fontSize: wp("3.8%"),
   },
+  
+  tagButton: {
+    flex: 1,                          // todos ocupan mismo espacio
+    marginHorizontal: wp("1.2%"),     // separación uniforme
+    paddingVertical: hp("1.2%"),
+    borderRadius: wp("3%"),
+    borderWidth: 1,
+    borderColor: "#eee",
+    backgroundColor: "#fff",
+    alignItems: "center",             // centra el texto
+    justifyContent: "center",
+  },
+  
+  tagButtonActive: {
+    backgroundColor: "#FF9500",
+    borderColor: "#FF9500",
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  
+  tagButtonText: {
+    fontSize: wp("3.4%"),
+    color: "#333",
+    fontWeight: "600",
+  },
+  
+  tagButtonTextActive: {
+    color: "#fff",
+  },
+
+  // === Chips para etiquetas de reseña ===
+tagButtonsRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",          // si no entran, baja prolijo a 2da línea
+  alignItems: "center",
+  gap: 8,                    // usa gap como ya usás en otros bloques
+  //marginTop: 8,
+  marginBottom: 18,
+},
+
+tagChip: {
+  flexShrink: 0,
+  borderRadius: 999,         // pill
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  backgroundColor: "#F5F5F5",
+  borderWidth: 1,
+  borderColor: "#EAEAEA",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 32,             // altura consistente
+},
+
+tagChipActive: {
+  backgroundColor: "#FF9500",
+  borderColor: "#FF9500",
+},
+
+tagChipText: {
+  fontSize: 12,              // chico, estilo “tag”
+  fontWeight: "700",
+  color: "#333",
+},
+
+tagChipTextActive: {
+  color: "#fff",
+},
+
+starsRow: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+starTouchable: {
+  paddingHorizontal: 3,   // ⬅️ agranda área sin crecer el ícono
+  paddingVertical: 6,
+  marginRight: 4,
+},
+
 })

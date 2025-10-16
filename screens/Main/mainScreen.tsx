@@ -206,31 +206,72 @@ export default function MainScreenV2() {
   const [newReviewText, setNewReviewText] = useState<string>("")
   const [newReviewTags, setNewReviewTags] = useState<string>("")
   const reviewsScrollRef = useRef(null)
+  
+  const lastHandledPlaceId = useRef<string | null>(null)
 
+  const TAG_OPTIONS = ["SIN TACC", "Vegetariano", "Vegano"];
+  const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
+
+  const toggleReviewTag = (tag: string) => {
+    setSelectedReviewTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    )
+  }
   const mapRef = useRef<MapView>(null)
 
-  const renderStars = (rating: number, onPressStar?: (n: number) => void) => {
-    const arr = []
+const renderStars = (
+  rating: number,
+  onPressStar?: (n: number) => void,
+  size: number = 18 // ⬅️ más grande por defecto
+) => {
+  const arr = []
+  for (let i = 1; i <= 5; i++) {
+    const filled = i <= rating
+    arr.push(
+      <TouchableOpacity
+        key={i}
+        activeOpacity={onPressStar ? 0.7 : 1}
+        onPress={() => {
+          if (!onPressStar) return
+          // Toggle off: si tocás la misma estrella, vuelve a 0
+          onPressStar(i === rating ? 0 : i)
+        }}
+        style={baseStyles.starTouchable}         // ⬅️ área táctil más grande
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} // más perdón al dedo
+      >
+        <FontAwesome
+          name={filled ? "star" : "star-o"}
+          size={size}
+          color={filled ? "#FFD700" : "#cfcfcf"}
+        />
+      </TouchableOpacity>,
+    )
+  }
+  return <View style={baseStyles.starsRow}>{arr}</View>
+}
+
+  const renderStarsStatic = (rating: number) => {
+    const stars = []
     for (let i = 1; i <= 5; i++) {
-      arr.push(
-        <TouchableOpacity
+      stars.push(
+        <FontAwesome
           key={i}
-          activeOpacity={onPressStar ? 0.6 : 1}
-          onPress={() => onPressStar && onPressStar(i)}
+          name={i <= rating ? "star" : "star-o"}
+          size={16}
+          color={i <= rating ? "#FFD700" : "#ccc"}
           style={{ marginRight: 2 }}
-        >
-          <FontAwesome name={i <= rating ? "star" : "star-o"} size={18} color={i <= rating ? "#FFD700" : "#ccc"} />
-        </TouchableOpacity>,
+        />
       )
     }
-    return <View style={{ flexDirection: "row" }}>{arr}</View>
+    return <View style={{ flexDirection: "row" }}>{stars}</View>
   }
+
 
   const fetchPlaceReviews = useCallback(async () => {
     if (!selectedPlace?.place_id) return
     try {
       setIsLoadingReviews(true)
-      const res = await axios.get(`http://172.16.1.95:8000/api/reviews/place/${selectedPlace.place_id}`)
+      const res = await axios.get(`http://192.168.0.18:8000/api/reviews/place/${selectedPlace.place_id}`)
       const transformed = (res.data?.reviews ?? []).map((r: any) => ({
         id: r._id,
         rating: r.rating,
@@ -264,21 +305,18 @@ export default function MainScreenV2() {
       const payload = {
         rating: newReviewRating,
         comment: newReviewText.trim(),
-        tags: newReviewTags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        tags: selectedReviewTags,
         placeId: selectedPlace.place_id,
         placeName: selectedPlace.name ?? "Lugar sin nombre",
         images: [],
       }
-      await axios.post(`http://172.16.1.95:8000/api/reviews/create`, payload, {
+      await axios.post(`http://192.168.0.18:8000/api/reviews/create`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
       setNewReviewRating(0)
       setNewReviewText("")
-      setNewReviewTags("")
+      setSelectedReviewTags([]) 
       fetchPlaceReviews()
       Alert.alert("¡Gracias!", "Tu reseña fue publicada.")
     } catch (e) {
@@ -640,6 +678,51 @@ export default function MainScreenV2() {
       return () => clearTimeout(t)
     }
   }, [showBottomSheet, currentIndex, infiniteData])
+
+  useEffect(() => {
+  // tipá y extraé una sola vez
+  const params = (route?.params as { placeId?: string; placeName?: string } | undefined)
+  const pid = params?.placeId
+  if (!pid) return                              // ✅ evita getPlaceDetails(undefined)
+  if (lastHandledPlaceId.current === pid) return
+
+  lastHandledPlaceId.current = pid
+
+  ;(async () => {
+    try {
+      console.log("[Profile→Map] pid recibido:", pid)
+
+      // 1) bloqueos/UX
+      singlePlaceLock.current = true
+      setMode("map")
+
+      // 2) pedir detalles por ID (una sola 'det', sin sombra de variables)
+      const det = await getPlaceDetails(pid)
+      console.log("[Profile→Map] detalles:", det?.place_id, det?.geometry?.location)
+
+      if (!det?.geometry?.location) {
+        Alert.alert("Ups", "No se encontró el lugar de esta reseña.")
+        return
+      }
+
+      // 3) setear estado y abrir ficha
+      setNearbyPlacesList([det])
+      setSelectedPlace(det)
+      setIsCardScrollable(false)
+      setRealCurrentIndex(0)
+
+      nav.navigate("Map")     
+      setTimeout(() => {
+        flyTo(det.geometry.location.lat, det.geometry.location.lng, true)
+        showAndExpandBottomSheet()
+      }, 0)
+    } catch (e) {
+      console.error("Error cargando lugar por ID:", e)
+      Alert.alert("Error", "No se pudo abrir el lugar de la reseña.")
+    }
+    
+  })()
+}, [route?.params?.placeId])
 
   const handleOpenImageViewer = (idx: number) => {
     if (selectedPlace?.photos?.length) {
@@ -1507,7 +1590,7 @@ export default function MainScreenV2() {
                                 <Text style={baseStyles.addReviewTitle}>Añadí tu reseña</Text>
 
                                 <View style={baseStyles.addReviewStarsRow}>
-                                  {renderStars(newReviewRating, setNewReviewRating)}
+                                  {renderStars(newReviewRating, setNewReviewRating, 32)}
                                   <Text style={baseStyles.addReviewHint}>{newReviewRating}/5</Text>
                                 </View>
 
@@ -1519,12 +1602,28 @@ export default function MainScreenV2() {
                                   style={baseStyles.addReviewInput}
                                 />
 
-                                <TextInput
-                                  placeholder="Etiquetas separadas por coma (ej: sin tacc, vegano)"
-                                  value={newReviewTags}
-                                  onChangeText={setNewReviewTags}
-                                  style={baseStyles.addReviewTagsInput}
-                                />
+{/* Etiquetas predefinidas (chips) */}
+<View style={baseStyles.tagButtonsRow}>
+  {TAG_OPTIONS.map((tag) => {
+    const active = selectedReviewTags.includes(tag)
+    return (
+      <TouchableOpacity
+        key={tag}
+        onPress={() => toggleReviewTag(tag)}
+        style={[baseStyles.tagChip, active && baseStyles.tagChipActive]}
+        activeOpacity={0.8}
+      >
+        <Text
+          style={[baseStyles.tagChipText, active && baseStyles.tagChipTextActive]}
+          numberOfLines={1}           // evita cortar en 2 líneas
+          ellipsizeMode="clip"
+        >
+          {tag}
+        </Text>
+      </TouchableOpacity>
+    )
+  })}
+</View>
 
                                 <TouchableOpacity onPress={submitReview} style={baseStyles.addReviewButton}>
                                   <Text style={baseStyles.addReviewButtonText}>Publicar reseña</Text>
@@ -1564,7 +1663,7 @@ export default function MainScreenV2() {
                                         </View>
                                       </View>
 
-                                      <View style={baseStyles.reviewRatingContainer}>{renderStars(review.rating)}</View>
+                                      <View style={baseStyles.reviewRatingContainer}>{renderStarsStatic(review.rating)}</View>
 
                                       <Text style={baseStyles.reviewText}>{review.text}</Text>
 

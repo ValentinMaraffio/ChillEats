@@ -34,7 +34,7 @@ export const registerUser = async (
   password: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await fetch('http://172.16.1.95:8000/api/auth/signup', {
+    const response = await fetch('http://192.168.0.18:8000/api/auth/signup', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -66,7 +66,7 @@ export const registerUser = async (
 
 export const sendVerificationCode = async (email: string): Promise<void> => {
   try {
-    await fetch('http://172.16.1.95:8000/api/auth/send-verification-code', {
+    await fetch('http://192.168.0.18:8000/api/auth/send-verification-code', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

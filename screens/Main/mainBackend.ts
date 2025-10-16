@@ -154,42 +154,56 @@ export const getPlaceAutocomplete = async (query: string, location: Location.Loc
 }
 
 export const getPlaceDetails = async (placeId: string): Promise<Place | null> => {
+  if (!placeId) return null
   try {
-    const detailResponse = await axios.get(
-      `https://maps.googleapis.com/maps/api/place/details/json`,
+    const { data } = await axios.get(
+      "https://maps.googleapis.com/maps/api/place/details/json",
       {
         params: {
           place_id: placeId,
-          // ⬇️ Pedimos más campos para poder inferir dietas
-          fields: "name,rating,user_ratings_total,geometry,photos,types,formatted_address,vicinity, website",
+          fields:
+            "place_id,name,rating,user_ratings_total,geometry,photos,types,formatted_address,vicinity,website",
           key: GOOGLE_API_KEY,
+          language: "es",
         },
       }
-    );
+    )
 
-    const result = detailResponse.data.result;
-    return {
-      place_id: placeId,
-      name: result.name,
-      rating: result.rating || 0,
-      user_ratings_total: result.user_ratings_total || 0,
-      geometry: {
-        location: {
-          lat: result.geometry.location.lat,
-          lng: result.geometry.location.lng,
-        },
-      },
-      photos: result.photos || [],
-      website: result.website,
-      types: result.types || [],                 // ⬅️ nuevo
-      formatted_address: result.formatted_address, // ⬅️ nuevo
-      vicinity: result.vicinity,                 // ⬅️ ya lo usabas en otros lados
-    };
-  } catch (e) {
-    Alert.alert("Error", "No se pudo obtener la información del lugar");
-    return null;
+    console.log("[Details] status:", data?.status, "has result:", !!data?.result, "err:", data?.error_message)
+
+    if (data?.status !== "OK" || !data?.result) {
+      // ZERO_RESULTS / NOT_FOUND / INVALID_REQUEST / REQUEST_DENIED, etc.
+      if (data?.error_message) console.warn("[Details] error_message:", data.error_message)
+      return null
+    }
+
+    const r = data.result
+    if (!r?.geometry?.location?.lat || !r?.geometry?.location?.lng) return null
+
+    // Si tu UI espera URLs de fotos, podés transformar aquí:
+    // const photos = (r.photos ?? []).slice(0, 6).map((p:any) =>
+    //   `https://maps.googleapis.com/maps/api/place/photo?maxwidth=1200&photoreference=${encodeURIComponent(p.photo_reference)}&key=${GOOGLE_API_KEY}`
+    // )
+
+    const place: Place = {
+      place_id: r.place_id,
+      name: r.name ?? "Lugar sin nombre",
+      rating: r.rating,
+      user_ratings_total: r.user_ratings_total,
+      geometry: { location: { lat: r.geometry.location.lat, lng: r.geometry.location.lng } },
+      photos: r.photos,                 // o reemplazá por `photos` (URLs) si tu UI lo requiere
+      website: r.website,
+      types: r.types,
+      formatted_address: r.formatted_address,
+      vicinity: r.vicinity,
+    }
+
+    return place
+  } catch (err: any) {
+    console.error("[Details] Exception:", err?.response?.data || err?.message || err)
+    return null
   }
-};
+}
 
 // Sorting and data processing
 export const sortPlacesByDistance = (places: Place[], userLocation: Location.LocationObjectCoords | null): Place[] => {

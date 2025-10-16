@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react"
-import { View, Text, TouchableOpacity, Image, ScrollView, Alert, Modal, Animated, Dimensions, PanResponder, FlatList, TextInput } from "react-native"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { View, Text, TouchableOpacity, Image, ScrollView, Alert, Modal, Animated, Dimensions, PanResponder, FlatList, TextInput, Pressable } from "react-native"
 import { FontAwesome, Ionicons } from "@expo/vector-icons"
 import { useAuth } from "../../context/authContext"
 import { handleUserLogout } from "./profileBackend"
@@ -12,11 +12,14 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import axios from "axios"
 import Slider from "@react-native-community/slider"
 import { Picker } from "@react-native-picker/picker"
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs"
+import { useFocusEffect } from "@react-navigation/native"
 
 
 type Review = {
   id: string
   placeName: string
+  placeId: string 
   rating: number
   date: string
   text: string
@@ -32,7 +35,7 @@ export default function ProfileScreen() {
   const [starFilter, setStarFilter] = useState(0)
   const [distanceFilter, setDistanceFilter] = useState(0)
   const [profileImage, setProfileImage] = useState<string | null>(null)
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>()
+  const navigation = useNavigation<BottomTabNavigationProp<any>>() 
   const [reviews, setReviews] = useState<Review[]>([])
   const [filteredReviews, setFilteredReviews] = useState<Review[]>([])
   const [showSettings, setShowSettings] = useState(false)
@@ -42,6 +45,8 @@ export default function ProfileScreen() {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "closest" | "farthest" | null>(null)
   const [sortCriterion, setSortCriterion] = useState<"date" | "distance" | "rating">("date")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+  const [refreshing, setRefreshing] = useState(false)
+
   
   const screenHeight = Dimensions.get("window").height
   const filtersPanelHeight = Math.min(640, screenHeight * 0.62)
@@ -61,7 +66,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await axios.delete(`http://172.16.1.95:8000/api/reviews/${id}`, {
+            await axios.delete(`http://192.168.0.18:8000/api/reviews/${id}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             setReviews(reviews.filter((r) => r.id !== id))
@@ -76,6 +81,13 @@ export default function ProfileScreen() {
   )
 }
 
+const handleOpenReview = (review: Review) => {
+  if (!review.placeId) return
+  // Ir a la tab "Map" pasando SOLO el id
+  navigation.navigate("Map", {
+    placeId: review.placeId,
+  })
+}
   //animacion cierre deslizando configuracion
   const panResponder = useRef(
   PanResponder.create({
@@ -144,37 +156,38 @@ const panResponderFilters = useRef(
   })
 ).current;
 
+const fetchUserReviews = useCallback(async () => {
+  try {
+    const res = await axios.get("http://192.168.0.18:8000/api/reviews/my-reviews", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const transformedReviews = res.data.reviews.map((review: any) => ({
+      id: review._id,
+      placeName: review.placeName,
+      placeId: review.placeId,
+      rating: review.rating,
+      date: review.createdAt ?? review.date,
+      text: review.comment ?? review.text,
+      distance: review.distance ?? 0,
+      tags: review.tags ?? [],
+    }))
+    setReviews(transformedReviews)
+    setFilteredReviews(transformedReviews)
+  } catch (e) {
+    console.error("Error cargando mis reseñas:", e)
+  }
+}, [token])
+
 useEffect(() => {
-  const fetchUserReviews = async () => {
-    try {
-      //const { token } = useAuth() // Asegurate de que el token esté disponible
-      const res = await axios.get('http://172.16.1.95:8000/api/reviews/my-reviews', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+  fetchUserReviews()
+}, [fetchUserReviews])
 
-        const transformedReviews = res.data.reviews.map((review: any) => ({
-        id: review._id,
-        placeName: review.placeName,
-        rating: review.rating,
-        date: review.createdAt,
-        text: review.comment,
-        distance: 0, // si no tenés distancia, podés dejarlo en 0 u ocultar
-        tags: review.tags,
-      }))
-
-      setReviews(transformedReviews)
-      setFilteredReviews(transformedReviews)
-    } catch (error) {
-      console.error("Error al cargar reseñas del usuario:", error)
-    }
-  }
-
-  if (token) {
+useFocusEffect(
+  useCallback(() => {
     fetchUserReviews()
-  }
-}, [user])
+    // no hace falta cleanup
+  }, [fetchUserReviews])
+)
 
 //FILTROS RESEÑAS
 useEffect(() => {
@@ -492,13 +505,15 @@ const handleLogout = async () => {
   keyExtractor={(item) => item.id}
   contentContainerStyle={styles.recentList}
   renderItem={({ item }) => (
-    <View style={styles.recentCard}>
-      <View style={styles.recentIcon}>
-        <Ionicons name="restaurant-outline" size={28} color="#fff" />
+    <Pressable  onPress={() => handleOpenReview(item)}>
+      <View style={styles.recentCard}>
+          <View style={styles.recentIcon}>
+            <Ionicons name="restaurant-outline" size={28} color="#fff" />
+          </View>
+          <Text style={styles.recentPlace2} numberOfLines={1}>{item.placeName}</Text>
+          <View style={{ marginTop: 4 }}>{renderStars(item.rating)}</View>
       </View>
-      <Text style={styles.recentPlace2} numberOfLines={1}>{item.placeName}</Text>
-      <View style={{ marginTop: 4 }}>{renderStars(item.rating)}</View>
-    </View>
+    </Pressable>
   )}
 />
 
@@ -540,7 +555,12 @@ const handleLogout = async () => {
     {filteredReviews.length > 0 ? (
       <>
         {filteredReviews.slice(0, reviewsToShow).map((review, index) => (
-          <View key={index} style={styles.reviewCard}>
+            <Pressable
+              key={review.id} 
+              onPress={() => handleOpenReview(review)}
+            >
+
+          <View style={styles.reviewCard}>
             <TouchableOpacity
               style={styles.deleteReviewButton}
               onPress={() => handleDeleteReview(review.id)}
@@ -581,6 +601,9 @@ const handleLogout = async () => {
               ))}
             </View>
           </View>
+        
+        </Pressable>
+        
         ))}
 
         {/* Botón cargar más */}
