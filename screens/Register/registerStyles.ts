@@ -6,6 +6,7 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: hp("4%"),
     width: "100%",
+    backgroundColor: '#feead8',
   },
   scrollContent: {
     alignItems: "center",
@@ -21,14 +22,14 @@ export const styles = StyleSheet.create({
   },
   TextInput: {
     borderBottomWidth: 1,
-    borderColor: "white",
+    borderColor: "#ff9500",
     width: wp("80%"),
     marginTop: hp("2.5%"),
-    color: "white",
+    color: "#ff9500",
     paddingVertical: hp("0.5%"),
   },
   signInButton: {
-    backgroundColor: "white",
+    backgroundColor: "#ff9500",
     paddingVertical: hp("2%"),
     borderRadius: wp("8%"),
     marginTop: hp("2.5%"),
@@ -39,11 +40,19 @@ export const styles = StyleSheet.create({
     marginTop: hp("1.2%"),
   },
   buttonText: {
-    color: "black",
+    color: "#ff9500",
     fontWeight: "bold",
     fontSize: wp("4%"),
     textAlign: "center",
   },
+
+  buttonText2: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: wp("4%"),
+    textAlign: "center",
+  },
+
   buttonTextLogin: {
     color: "white",
     fontWeight: "400",
@@ -60,27 +69,30 @@ export const styles = StyleSheet.create({
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#ff9500",
     opacity: 0.6,
   },
   dividerText: {
     marginHorizontal: wp("2.5%"),
-    color: "#fff",
+    color: "#ff9500",
     fontWeight: "bold",
   },
-  continueButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "white",
-    paddingVertical: hp("1.2%"),
-    borderRadius: wp("2%"),
-    marginTop: hp("1.5%"),
-    width: wp("90%"),
-    gap: wp("2%"),
-  },
+    continueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: "#ff9500",
+    borderWidth: 1,
+    paddingVertical: 15,
+    borderRadius: 30,
+    marginTop: hp('1.5%'),
+    width: wp('90%'),
+    gap: wp('2%'),
+    backgroundColor: 'transparent',
+    },
+
   TermsText: {
-    color: "white",
+    color: "#ff9500",
     textAlign: "center",
     width: wp("80%"),
     marginTop: hp("2.5%"),
@@ -88,7 +100,7 @@ export const styles = StyleSheet.create({
     lineHeight: hp("2.8%"),
   },
   iconStyle: {
-    width: wp("40%"),
+    width: 450,
     height: wp("40%"),
     marginTop: hp("6%"),
   },

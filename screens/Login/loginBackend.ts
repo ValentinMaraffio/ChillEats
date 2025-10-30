@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // Assets
-export const icon = require('../../assets/img/icon-1.png');
+export const icon = require('../../assets/img/Group1482.png');
 export const googleLogo = require('../../assets/img/googleLogo.png');
 export const appleLogo = require('../../assets/img/appleLogo.png');
 
