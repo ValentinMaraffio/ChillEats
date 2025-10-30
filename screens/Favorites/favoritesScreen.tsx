@@ -200,18 +200,44 @@ const filteredFavorites = useMemo(() => {
         </View>
 
         {/* Chips (solo visuales) */}
-        <View style={styles.chipsRow}>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-    {AVAILABLE_FILTERS.map((label) => (
-      <Tag
-        key={label}
-        label={label}
-        selected={selectedFilters.includes(label)}
-        onPress={() => toggleFilter(label)}
-      />
-    ))}
-  </ScrollView>
-</View>
+        <ScrollView
+  horizontal
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={styles.chipsRow}
+>
+  {[
+    { key: "Recomendados", label: "Recomendados" },
+    { key: "sin tacc", label: "Sin TACC" },
+    { key: "vegano", label: "Vegano" },
+    { key: "vegetariano", label: "Vegetariano" },
+    { key: "kosher", label: "Kosher" },
+    { key: "halal", label: "Halal" },
+    { key: "keto", label: "Keto" },
+    { key: "paleo", label: "Paleo" },
+  ].map((filter) => {
+    const active = selectedFilters.includes(filter.key);
+    return (
+      <TouchableOpacity
+        key={filter.key}
+        onPress={() => toggleFilter(filter.key)}
+        style={[
+          tagStyle.container,
+          active && tagStyle.containerSelected,
+        ]}
+      >
+        <Text
+          style={[
+            tagStyle.text,
+            active && tagStyle.textSelected,
+          ]}
+        >
+          {filter.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  })}
+</ScrollView>
+
 
       </View>
 

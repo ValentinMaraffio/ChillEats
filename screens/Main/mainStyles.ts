@@ -7,13 +7,13 @@ const { width, height } = Dimensions.get("window")
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: "#feead8",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: "#feead8",
   },
   searchContainer: {
     position: "absolute",

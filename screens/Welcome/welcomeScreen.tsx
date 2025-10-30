@@ -11,12 +11,12 @@ const WelcomeScreen = () => {
 
   return (
         <LinearGradient
-          colors={['#ff4500', '#ffab40']}
+          colors={['#ffeedfff', '#ffeedfff']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={styles.container}
         >
-      <Image source={require("../../assets/img/icon-1.png")} style={styles.logo} />
+      <Image source={require("../../assets/img/Group1482.png")} style={styles.logo} />
       <Text style={styles.title}>¡Bienvenido a ChillEats!</Text>
       <Text style={styles.subtitle}>Descubre los mejores restaurantes cerca de ti</Text>
 

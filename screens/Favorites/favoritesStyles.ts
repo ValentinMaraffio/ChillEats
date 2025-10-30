@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   // contenedor principal con fondo claro como en Main
   safeAreaV2: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#feead8",
   },
 
 
@@ -28,13 +28,14 @@ export const styles = StyleSheet.create({
 
 
   searchBar: {
+    marginTop: -10,
+    borderRadius: 12,
+    backgroundColor: "#f5f5f5",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 16,
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    height: 48,
   },
   searchInput: {
     flex: 1,
@@ -43,11 +44,11 @@ export const styles = StyleSheet.create({
 
 
   chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 14,
-    marginBottom: 6,
+  flexDirection: "row",
+  paddingHorizontal: 10,
+  gap: 10,
+  paddingRight: 40, // igual que en main
+  marginTop: 15,
   },
 
 
@@ -120,23 +121,28 @@ export const styles = StyleSheet.create({
 
 export const tagStyle = {
   container: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    backgroundColor: "white",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+    minWidth: 80,
+    justifyContent: "center",
+    alignItems: "center",
   },
   text: {
-    color: "#111827",
-    fontWeight: "600" as const,
-    fontSize: 13,
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500" as const,
   },
   containerSelected: {
-    backgroundColor: "#FFEDD5",
-    borderColor: "#FDBA74",
+    backgroundColor: "#ff9500",
   },
   textSelected: {
-    color: "#9A3412",
+    color: "white",
   },
 };

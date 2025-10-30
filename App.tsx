@@ -19,9 +19,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { AuthProvider, useAuth } from "./context/authContext"
 import { FavoritesProvider } from "./context/favoritesContext"
 import { useKeyboardVisibility } from "./hooks/useKeyboardVisibility"
-import { LinearGradient } from "expo-linear-gradient" 
-import React, { useEffect, useMemo, useState } from "react"
-import { View, Text, Pressable, Platform, LayoutChangeEvent, StyleSheet  } from "react-native"
+import { useEffect, useState } from "react"
+import { View, Text, Pressable, Platform, type LayoutChangeEvent, StyleSheet } from "react-native"
 import Animated, { useSharedValue, withTiming, useAnimatedStyle, Easing } from "react-native-reanimated"
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs"
 import { FiltersProvider } from "./context/filtersContext"
@@ -63,7 +62,7 @@ function TabItem({
 
   const anim = useAnimatedStyle(() => ({
     transform: [{ scale: 0.98 + s.value * 0.04 }], // 0.98 → 1.02
-    opacity: 0.9 + s.value * 0.1,                  // 0.9 → 1
+    opacity: 0.9 + s.value * 0.1, // 0.9 → 1
   }))
 
   return (
@@ -91,37 +90,25 @@ function TabItem({
   )
 }
 
-// --- TAB BAR COMPLETA (tema invertido solo si NO hay usuario; backdrop animado entre opciones) ---
+// --- TAB BAR COMPLETA (tema único para todas las pantallas) ---
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  const { user } = useAuth()
   const ORANGE = "#FF9500"
   const ORANGE_DARK = "#E67E00"
   const WHITE = "#FFFFFF"
 
-  // Ruta activa
-  const activeRouteName = state.routes[state.index].name
-
-  // Lógica de tema invertido
-  let isInvertedTheme = false
-  if (activeRouteName === "Favorites") {
-    // 👈 Favoritos SIEMPRE blanco
-    isInvertedTheme = true
-  } else if (!user && activeRouteName === "User") {
-    // 👈 Usuario blanco SOLO si no hay user
-    isInvertedTheme = true
-  }
+  const isInvertedTheme = true
 
   // Colores
-  const BAR_BG = isInvertedTheme ? WHITE : ORANGE
-  const ICON_INACTIVE = isInvertedTheme ? "#FFB566" : WHITE
-  const ICON_ACTIVE   = isInvertedTheme ? ORANGE : WHITE
-  const TEXT_INACTIVE = isInvertedTheme ? "#FFB566" : "#FFE0C2"
-  const TEXT_ACTIVE   = isInvertedTheme ? ORANGE : WHITE
-  const ITEM_ACTIVE_BG = isInvertedTheme ? "#FFF2E6" : ORANGE_DARK
+  const BAR_BG = isInvertedTheme ? ORANGE : ORANGE
+  const ICON_INACTIVE = isInvertedTheme ? "#FFF" : WHITE
+  const ICON_ACTIVE = isInvertedTheme ? WHITE : WHITE
+  const TEXT_INACTIVE = isInvertedTheme ? "#FFF" : "#fff"
+  const TEXT_ACTIVE = isInvertedTheme ? WHITE : WHITE
+  const ITEM_ACTIVE_BG = isInvertedTheme ? "#E67E00" : ORANGE_DARK
 
   // Backdrop animado
   const [layouts, setLayouts] = useState<{ x: number; width: number }[]>(
-    Array(state.routes.length).fill({ x: 0, width: 0 })
+    Array(state.routes.length).fill({ x: 0, width: 0 }),
   )
   const backX = useSharedValue(0)
   const backW = useSharedValue(0)
@@ -207,8 +194,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 options.tabBarLabel !== undefined
                   ? (options.tabBarLabel as string)
                   : options.title !== undefined
-                  ? (options.title as string)
-                  : (route.name as string)
+                    ? (options.title as string)
+                    : (route.name as string)
 
               const isFocused = state.index === index
 
@@ -255,7 +242,6 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   )
 }
 
-
 const styles = StyleSheet.create({
   item: {
     flex: 1,
@@ -268,8 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 })
-
-
 
 function MainTabs() {
   const isKeyboardVisible = useKeyboardVisibility()
@@ -287,17 +271,13 @@ function MainTabs() {
   )
 }
 
-
-
-
-
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <AuthProvider>
           <FavoritesProvider>
-            <FiltersProvider> {/* 👈 envuelve las tabs y pantallas */}
+            <FiltersProvider>
               <Stack.Navigator initialRouteName="MainTabs" screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="MainTabs" component={MainTabs} />
                 <Stack.Screen name="Login" component={LoginScreen} />

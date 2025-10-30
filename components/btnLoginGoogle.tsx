@@ -25,7 +25,7 @@ export default function BtnLoginiGoogle() {
 
     const enviarTokenalServer = async (idToken: string) => {
         try {
-            const res = await axios.post('http://192.168.0.18:8000/api/auth/google-signin', { idToken });
+            const res = await axios.post('http://172.16.6.156:8000/api/auth/google-signin', { idToken });
             const token = res.data.token;
 
             // Guardás el token como en el resto de tu app (como ya haces en handleLogin)

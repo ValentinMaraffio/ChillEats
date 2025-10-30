@@ -119,12 +119,15 @@ type Review = {
 }
 
 export default function MainScreenV2() {
+  const [mapReady, setMapReady] = useState(false)
   const singlePlaceLock = useRef(false)
   const route = useRoute() as any
   const nav = useNavigation<BottomTabNavigationProp<TabParamList>>()
   const goToMap = useCallback(() => {
     nav.navigate("Map")
   }, [nav])
+
+  const lastProcessedPlaceId = useRef<string | null>(null)
 
   const { user, token } = useAuth()
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites()
@@ -192,6 +195,7 @@ export default function MainScreenV2() {
   const ABSOLUTE_MIN = 0
   const ABSOLUTE_MAX = height + 100
   const needsRepositioning = useRef(false)
+  const pendingOpenSheet = useRef(false)
   const [activeTab, setActiveTab] = useState<"info" | "reviews">("info")
 
   const [showImageViewer, setShowImageViewer] = useState(false)
@@ -206,49 +210,43 @@ export default function MainScreenV2() {
   const [newReviewText, setNewReviewText] = useState<string>("")
   const [newReviewTags, setNewReviewTags] = useState<string>("")
   const reviewsScrollRef = useRef(null)
-  
+
   const lastHandledPlaceId = useRef<string | null>(null)
 
-  const TAG_OPTIONS = ["SIN TACC", "Vegetariano", "Vegano"];
-  const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([]);
+  const TAG_OPTIONS = ["SIN TACC", "Vegetariano", "Vegano"]
+  const [selectedReviewTags, setSelectedReviewTags] = useState<string[]>([])
 
   const toggleReviewTag = (tag: string) => {
-    setSelectedReviewTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    )
+    setSelectedReviewTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
   }
   const mapRef = useRef<MapView>(null)
 
-const renderStars = (
-  rating: number,
-  onPressStar?: (n: number) => void,
-  size: number = 18 // ⬅️ más grande por defecto
-) => {
-  const arr = []
-  for (let i = 1; i <= 5; i++) {
-    const filled = i <= rating
-    arr.push(
-      <TouchableOpacity
-        key={i}
-        activeOpacity={onPressStar ? 0.7 : 1}
-        onPress={() => {
-          if (!onPressStar) return
-          // Toggle off: si tocás la misma estrella, vuelve a 0
-          onPressStar(i === rating ? 0 : i)
-        }}
-        style={baseStyles.starTouchable}         // ⬅️ área táctil más grande
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} // más perdón al dedo
-      >
-        <FontAwesome
-          name={filled ? "star" : "star-o"}
-          size={size}
-          color={filled ? "#FFD700" : "#cfcfcf"}
-        />
-      </TouchableOpacity>,
-    )
+  const renderStars = (
+    rating: number,
+    onPressStar?: (n: number) => void,
+    size = 18, // ⬅️ más grande por defecto
+  ) => {
+    const arr = []
+    for (let i = 1; i <= 5; i++) {
+      const filled = i <= rating
+      arr.push(
+        <TouchableOpacity
+          key={i}
+          activeOpacity={onPressStar ? 0.7 : 1}
+          onPress={() => {
+            if (!onPressStar) return
+            // Toggle off: si tocás la misma estrella, vuelve a 0
+            onPressStar(i === rating ? 0 : i)
+          }}
+          style={baseStyles.starTouchable} // ⬅️ área táctil más grande
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} // más perdón al dedo
+        >
+          <FontAwesome name={filled ? "star" : "star-o"} size={size} color={filled ? "#FFD700" : "#cfcfcf"} />
+        </TouchableOpacity>,
+      )
+    }
+    return <View style={baseStyles.starsRow}>{arr}</View>
   }
-  return <View style={baseStyles.starsRow}>{arr}</View>
-}
 
   const renderStarsStatic = (rating: number) => {
     const stars = []
@@ -260,18 +258,17 @@ const renderStars = (
           size={16}
           color={i <= rating ? "#FFD700" : "#ccc"}
           style={{ marginRight: 2 }}
-        />
+        />,
       )
     }
     return <View style={{ flexDirection: "row" }}>{stars}</View>
   }
 
-
   const fetchPlaceReviews = useCallback(async () => {
     if (!selectedPlace?.place_id) return
     try {
       setIsLoadingReviews(true)
-      const res = await axios.get(`http://192.168.0.18:8000/api/reviews/place/${selectedPlace.place_id}`)
+      const res = await axios.get(`http://172.16.6.156:8000/api/reviews/place/${selectedPlace.place_id}`)
       const transformed = (res.data?.reviews ?? []).map((r: any) => ({
         id: r._id,
         rating: r.rating,
@@ -310,13 +307,13 @@ const renderStars = (
         placeName: selectedPlace.name ?? "Lugar sin nombre",
         images: [],
       }
-      await axios.post(`http://192.168.0.18:8000/api/reviews/create`, payload, {
+      await axios.post(`http://172.16.6.156:8000/api/reviews/create`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
       setNewReviewRating(0)
       setNewReviewText("")
-      setSelectedReviewTags([]) 
+      setSelectedReviewTags([])
       fetchPlaceReviews()
       Alert.alert("¡Gracias!", "Tu reseña fue publicada.")
     } catch (e) {
@@ -349,11 +346,12 @@ const renderStars = (
 
   useEffect(() => {
     if (mode !== "map") return
-    if (singlePlaceLock.current) return
+    if (singlePlaceLock.current) return // Este check debe prevenir la ejecución
 
     const collection = places.length > 0 ? places : recommended.length > 0 ? recommended : []
 
     if (collection.length > 0) {
+      console.log("[v0] Auto-loading map with collection (not from feed)")
       setNearbyPlacesList(collection.slice(0, MAX_PLACES_LIMIT))
       setSelectedPlace(collection[0])
       setIsCardScrollable(collection.length > 1)
@@ -568,12 +566,21 @@ const renderStars = (
   }))
 
   const showAndExpandBottomSheet = () => {
-    setShowBottomSheet(true)
     setActiveTab("info")
     translateY.value = snapPoints.closed
-    setTimeout(() => {
-      translateY.value = withSpring(snapPoints.middle, { damping: 25, stiffness: 250 })
-    }, 50)
+
+    // Si ya estamos en el mapa, abrimos de inmediato
+    if (mode === "map") {
+      setShowBottomSheet(true)
+      setTimeout(() => {
+        translateY.value = withSpring(snapPoints.middle, { damping: 25, stiffness: 250 })
+      }, 50)
+      return
+    }
+
+    // Si no estamos en el mapa, marcamos la apertura pendiente.
+    // La apertura real se hará cuando el modo cambie a 'map'.
+    pendingOpenSheet.current = true
   }
 
   const closeBottomSheet = () =>
@@ -602,16 +609,32 @@ const renderStars = (
     [infiniteData],
   )
 
+  const needsCarouselInit = useRef(false)
+  const pendingCarouselIndex = useRef(0)
+  const onCarouselInitComplete = useRef<(() => void) | null>(null)
+
   useEffect(() => {
     const inf = createInfiniteData(nearbyPlacesList)
     setInfiniteData(inf)
     if (nearbyPlacesList.length > 0) {
-      const initial = getInitialInfiniteIndex(realCurrentIndex, nearbyPlacesList.length)
+      const targetRealIndex = needsCarouselInit.current ? pendingCarouselIndex.current : realCurrentIndex
+      const initial = getInitialInfiniteIndex(targetRealIndex, nearbyPlacesList.length)
       setCurrentIndex(initial)
-      setTimeout(
-        () => flatListRef.current?.scrollToOffset({ offset: initial * TOTAL_ITEM_WIDTH, animated: false }),
-        100,
-      )
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: initial * TOTAL_ITEM_WIDTH, animated: false })
+
+        if (needsCarouselInit.current && onCarouselInitComplete.current) {
+          setTimeout(() => {
+            onCarouselInitComplete.current?.()
+            onCarouselInitComplete.current = null
+          }, 150)
+        }
+
+        if (needsCarouselInit.current) {
+          needsCarouselInit.current = false
+        }
+      }, 200)
     }
   }, [nearbyPlacesList])
 
@@ -679,50 +702,107 @@ const renderStars = (
     }
   }, [showBottomSheet, currentIndex, infiniteData])
 
+  // Mantener el bottom sheet cerrado cuando estamos en 'feed' y
+  // procesar aperturas pendientes cuando lleguemos a 'map'.
   useEffect(() => {
-  // tipá y extraé una sola vez
-  const params = (route?.params as { placeId?: string; placeName?: string } | undefined)
-  const pid = params?.placeId
-  if (!pid) return                              // ✅ evita getPlaceDetails(undefined)
-  if (lastHandledPlaceId.current === pid) return
+    if (mode !== "map") {
+      // Si dejamos el mapa (ej: volvemos a la lista), cerramos el sheet
+      pendingOpenSheet.current = false
+      setShowBottomSheet(false)
+      // opcional: reposicionar el carousel si hacía falta
+      needsRepositioning.current = true
+      return
+    }
 
-  lastHandledPlaceId.current = pid
+    // Si entramos al mapa y hay una apertura pendiente, abrimos
+    if (pendingOpenSheet.current) {
+      pendingOpenSheet.current = false
+      setShowBottomSheet(true)
+      setTimeout(() => {
+        translateY.value = withSpring(snapPoints.middle, { damping: 25, stiffness: 250 })
+      }, 80)
+    }
+  }, [mode])
 
-  ;(async () => {
-    try {
-      console.log("[Profile→Map] pid recibido:", pid)
+  const params = route?.params as
+    | {
+        placeId?: string
+        fromFeed?: boolean
+        collection?: Place[]
+        initialIndex?: number
+      }
+    | undefined
 
-      // 1) bloqueos/UX
-      singlePlaceLock.current = true
-      setMode("map")
+  useEffect(() => {
+    console.log("[v0] Navigation params changed:", {
+      placeId: params?.placeId,
+      fromFeed: params?.fromFeed,
+      mapReady,
+      singlePlaceLock: singlePlaceLock.current,
+    })
 
-      // 2) pedir detalles por ID (una sola 'det', sin sombra de variables)
-      const det = await getPlaceDetails(pid)
-      console.log("[Profile→Map] detalles:", det?.place_id, det?.geometry?.location)
+    // Check mapReady and params.placeId early
+    if (!mapReady || !params?.placeId) {
+      console.log("[v0] Map not ready or no placeId provided, returning.")
+      return
+    }
 
-      if (!det?.geometry?.location) {
-        Alert.alert("Ups", "No se encontró el lugar de esta reseña.")
+    if (lastProcessedPlaceId.current === params.placeId) {
+      console.log("[v0] Already processed this placeId, skipping")
+      return
+    }
+
+    lastProcessedPlaceId.current = params.placeId
+
+    singlePlaceLock.current = true
+    console.log("[v0] Set singlePlaceLock to true")
+
+    setMode("map")
+
+    if (params.fromFeed && params.collection) {
+      const coll = params.collection
+      const idx = params.initialIndex || 0
+      const place = coll[idx]
+
+      if (!place) {
+        console.log("[v0] Place not found in collection, returning.")
         return
       }
 
-      // 3) setear estado y abrir ficha
-      setNearbyPlacesList([det])
-      setSelectedPlace(det)
-      setIsCardScrollable(false)
-      setRealCurrentIndex(0)
+      console.log("[v0] Loading from feed, index:", idx, "place:", place.name)
 
-      nav.navigate("Map")     
-      setTimeout(() => {
-        flyTo(det.geometry.location.lat, det.geometry.location.lng, true)
+      needsCarouselInit.current = true
+      pendingCarouselIndex.current = idx
+
+      onCarouselInitComplete.current = () => {
+        console.log("[v0] Carousel init complete, flying to location")
+        flyTo(place.geometry.location.lat, place.geometry.location.lng, true)
         showAndExpandBottomSheet()
-      }, 0)
-    } catch (e) {
-      console.error("Error cargando lugar por ID:", e)
-      Alert.alert("Error", "No se pudo abrir el lugar de la reseña.")
+      }
+
+      setNearbyPlacesList(coll)
+      setSelectedPlace(place)
+      setIsCardScrollable(coll.length > 1)
+      setRealCurrentIndex(idx)
+      return
     }
-    
-  })()
-}, [route?.params?.placeId])
+
+    // ✅ If coming from another screen (profile, etc.)
+    if (params.placeId) {
+      console.log("[v0] Loading single place:", params.placeId)
+      ;(async () => {
+        const det = await getPlaceDetails(params.placeId!)
+        if (det) {
+          setNearbyPlacesList([det])
+          setSelectedPlace(det)
+          setIsCardScrollable(false)
+          setRealCurrentIndex(0)
+          flyTo(det.geometry.location.lat, det.geometry.location.lng, true)
+          showAndExpandBottomSheet()
+        }
+      })()
+    }
+  }, [params?.placeId, mapReady]) // Removed redundant dependencies
 
   const handleOpenImageViewer = (idx: number) => {
     if (selectedPlace?.photos?.length) {
@@ -861,7 +941,7 @@ const renderStars = (
                             resizeMode="cover"
                           />
                         ) : (
-                          <Text style={baseStyles.cardImagePlaceholder}>Foto 2</Text>
+                          <Text style={baseStyles.cardImagePlaceholder}>Cargando...</Text>
                         )}
                       </View>
                       <View style={baseStyles.cardSideImageContainer}>
@@ -872,7 +952,7 @@ const renderStars = (
                             resizeMode="cover"
                           />
                         ) : (
-                          <Text style={baseStyles.cardImagePlaceholder}>Foto 3</Text>
+                          <Text style={baseStyles.cardImagePlaceholder}>Cargando...</Text>
                         )}
                       </View>
                     </View>
@@ -985,7 +1065,6 @@ const renderStars = (
           <View style={{ flex: 1 }}>
             <View style={s.header}>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}></View>
-
               <View style={s.searchWrap}>
                 <View style={s.searchBar}>
                   <Ionicons name="search" size={18} />
@@ -1053,10 +1132,10 @@ const renderStars = (
             </View>
 
             {mode === "feed" ? (
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1 }}> {/*}
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionTitle}>{places.length > 0 ? "Resultados" : "Recomendados cerca"}</Text>
-                  <TouchableOpacity
+              <TouchableOpacity
                     onPress={() => {
                       singlePlaceLock.current = false
                       goToMap()
@@ -1064,7 +1143,7 @@ const renderStars = (
                   >
                     <Text style={s.sectionAction}>Ver en mapa</Text>
                   </TouchableOpacity>
-                </View>
+                </View>{*/}
 
                 {isFetching ? (
                   <View style={s.loadingBlock}>
@@ -1079,20 +1158,18 @@ const renderStars = (
                       <TouchableOpacity
                         style={s.card}
                         onPress={() => {
-                          singlePlaceLock.current = true
-                          goToMap()
                           const collection = places.length > 0 ? places : recommended
-                          setNearbyPlacesList(collection.slice(0, MAX_PLACES_LIMIT))
-                          setSelectedPlace(item)
-                          setIsCardScrollable(collection.length > 1)
-                          setRealCurrentIndex(
-                            Math.max(
-                              0,
-                              collection.findIndex((p) => p.place_id === item.place_id),
-                            ),
+                          const idx = Math.max(
+                            0,
+                            collection.findIndex((p) => p.place_id === item.place_id),
                           )
-                          flyTo(item.geometry.location.lat, item.geometry.location.lng)
-                          showAndExpandBottomSheet()
+
+                          nav.navigate("Map", {
+                            placeId: item.place_id,
+                            fromFeed: true,
+                            collection: collection.slice(0, MAX_PLACES_LIMIT),
+                            initialIndex: idx,
+                          })
                         }}
                       >
                         <View style={s.cardImageWrap}>
@@ -1179,6 +1256,7 @@ const renderStars = (
                       latitudeDelta: 0.01,
                       longitudeDelta: 0.01,
                     }}
+                    onMapReady={() => setMapReady(true)}
                     onPress={() => setShowBottomSheet(false)}
                   >
                     {nearbyPlacesList.slice(0, MAX_PLACES_LIMIT).map((p) => (
@@ -1204,6 +1282,8 @@ const renderStars = (
                     style={s.mapBackPill}
                     onPress={() => {
                       singlePlaceLock.current = false
+                      setShowBottomSheet(false) // <- forzamos cerrar si estaba abierto
+                      pendingOpenSheet.current = false
                       nav.navigate("Home")
                     }}
                   >
@@ -1255,7 +1335,7 @@ const renderStars = (
                               resizeMode="cover"
                             />
                           ) : (
-                            <Text style={baseStyles.sideImagePlaceholder}>Foto 2</Text>
+                            <Text style={baseStyles.sideImagePlaceholder}>Cargando...</Text>
                           )}
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -1272,7 +1352,7 @@ const renderStars = (
                               resizeMode="cover"
                             />
                           ) : (
-                            <Text style={baseStyles.sideImagePlaceholder}>Foto 3</Text>
+                            <Text style={baseStyles.sideImagePlaceholder}>Cargando...</Text>
                           )}
                         </TouchableOpacity>
                       </View>
@@ -1602,28 +1682,28 @@ const renderStars = (
                                   style={baseStyles.addReviewInput}
                                 />
 
-{/* Etiquetas predefinidas (chips) */}
-<View style={baseStyles.tagButtonsRow}>
-  {TAG_OPTIONS.map((tag) => {
-    const active = selectedReviewTags.includes(tag)
-    return (
-      <TouchableOpacity
-        key={tag}
-        onPress={() => toggleReviewTag(tag)}
-        style={[baseStyles.tagChip, active && baseStyles.tagChipActive]}
-        activeOpacity={0.8}
-      >
-        <Text
-          style={[baseStyles.tagChipText, active && baseStyles.tagChipTextActive]}
-          numberOfLines={1}           // evita cortar en 2 líneas
-          ellipsizeMode="clip"
-        >
-          {tag}
-        </Text>
-      </TouchableOpacity>
-    )
-  })}
-</View>
+                                {/* Etiquetas predefinidas (chips) */}
+                                <View style={baseStyles.tagButtonsRow}>
+                                  {TAG_OPTIONS.map((tag) => {
+                                    const active = selectedReviewTags.includes(tag)
+                                    return (
+                                      <TouchableOpacity
+                                        key={tag}
+                                        onPress={() => toggleReviewTag(tag)}
+                                        style={[baseStyles.tagChip, active && baseStyles.tagChipActive]}
+                                        activeOpacity={0.8}
+                                      >
+                                        <Text
+                                          style={[baseStyles.tagChipText, active && baseStyles.tagChipTextActive]}
+                                          numberOfLines={1} // evita cortar en 2 líneas
+                                          ellipsizeMode="clip"
+                                        >
+                                          {tag}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    )
+                                  })}
+                                </View>
 
                                 <TouchableOpacity onPress={submitReview} style={baseStyles.addReviewButton}>
                                   <Text style={baseStyles.addReviewButtonText}>Publicar reseña</Text>
@@ -1663,7 +1743,9 @@ const renderStars = (
                                         </View>
                                       </View>
 
-                                      <View style={baseStyles.reviewRatingContainer}>{renderStarsStatic(review.rating)}</View>
+                                      <View style={baseStyles.reviewRatingContainer}>
+                                        {renderStarsStatic(review.rating)}
+                                      </View>
 
                                       <Text style={baseStyles.reviewText}>{review.text}</Text>
 
@@ -1698,22 +1780,22 @@ const renderStars = (
 
 const s = StyleSheet.create({
   searchWrap: { marginTop: 10 },
-  container: { flex: 1, backgroundColor: "#fff" },
-  loadingScreen: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, backgroundColor: "#fff" },
-  hiTitle: { fontSize: 22, fontWeight: "800" },
+  container: { flex: 1, backgroundColor: "#feead8", marginTop: 0, },
+  loadingScreen: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#feead8", color: "#fff" },
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 10, backgroundColor: "#feead8", color: "#fff" },
+  hiTitle: { fontSize: 22, fontWeight: "800", color: "#fff",},
   modeSwitch: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 2,
     borderRadius: 20,
     backgroundColor: "#f2f2f2",
   },
   modeSwitchText: { fontSize: 13, fontWeight: "600" },
   searchBar: {
-    marginTop: 12,
+    marginTop: 30,
     borderRadius: 12,
     backgroundColor: "#f5f5f5",
     flexDirection: "row",
@@ -1742,34 +1824,41 @@ const s = StyleSheet.create({
   },
   predictionText: { flex: 1 },
   filterChip: {
+    marginTop:5,
+    marginBottom: 0,
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: "#fff",
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#eee",
-    marginLeft: 8,
+    marginLeft: 5,
   },
   filterChipActive: { backgroundColor: "#ff9500", borderColor: "#ff9500" },
   filterChipText: { fontSize: 13, color: "#333", fontWeight: "600" },
   filterChipTextActive: { color: "#fff" },
-  sectionHeader: {
+  /*sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 40,
     paddingVertical: 8,
-  },
+  },*/
   sectionTitle: { fontSize: 18, fontWeight: "800" },
   sectionAction: { color: "#ff9500", fontWeight: "700" },
   loadingBlock: { flex: 1, alignItems: "center", justifyContent: "center" },
   card: {
-    marginTop: 12,
+    marginTop: 15,
     backgroundColor: "#fff",
     borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#eee",
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   cardImageWrap: { height: 160, backgroundColor: "#f2f2f2" },
   cardImage: { width: "100%", height: "100%" },
@@ -1841,6 +1930,7 @@ const s = StyleSheet.create({
   },
 })
 
+
 const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[]) => {
   logv("[v0] === getFilteredBadges DEBUG ===")
   logv("[v0] Input dietaryCategories:", dietaryCategories)
@@ -1875,7 +1965,7 @@ const getFilteredBadges = (dietaryCategories: string[], selectedFilters: string[
 
       if (
         (filterLower.includes("celiaco") || filterLower.includes("celíaco")) &&
-        (categoryLower.includes("sin tacc") || categoryLower.includes("tacc"))
+        (categoryLower.includes("sin tacc") || filterLower.includes("tacc"))
       ) {
         matches = true
       }

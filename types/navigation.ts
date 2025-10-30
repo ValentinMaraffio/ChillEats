@@ -1,3 +1,5 @@
+import type { Place } from "../screens/Main/mainBackend";
+
 export type RootStackParamList = {
   MainTabs: {screen?: keyof TabParamList}
   Login: undefined
@@ -18,11 +20,18 @@ export type RootStackParamList = {
 }
 
 export type TabParamList = {
-  Map: undefined
-  Home: undefined
-  Favorites: undefined
-  User: undefined
-}
+  Map:
+    | {
+        placeId?: string;
+        fromFeed?: boolean;
+        collection?: Place[];
+        initialIndex?: number;
+      }
+    | undefined;
+  Home: undefined;
+  Favorites: undefined;
+  User: undefined;
+};
 
 // Tipos de navegación para usar en los componentes
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack"

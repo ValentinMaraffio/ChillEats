@@ -3,17 +3,17 @@ const mongoose = require('mongoose');
 const userSchema = mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Name is required!'],
+    required: [true, 'Ingrese un Nombre!'],
     trim: true,
-    minLength: [3, 'Name must have at least 3 characters!'],
-    maxLength: [20, 'Name must be less than 20 characters!'],
+    minLength: [3, 'El nombre debe ser de al menos 3 caracteres!'],
+    maxLength: [20, 'El nombre debe ser máximo de 20 caracteres!'],
   },
   email: {
     type: String,
-    required: [true, 'Email is required!'],
+    required: [true, 'Ingrese el Email!'],
     trim: true,
-    unique: [true, 'Email must be unique!'],
-    minLength: [5, 'Email must have 5 characters!'],
+    unique: [true, 'El Email debe ser único!'],
+    minLength: [5, 'El Email debe ser de al menos 3 caracteres!'],
     lowercase: true,
   },
   password: {
