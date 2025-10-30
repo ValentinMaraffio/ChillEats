@@ -46,6 +46,8 @@ import type { TabParamList } from "../../types/navigation"
 import { inferDietaryCategories } from "../Favorites/favoritesBackend"
 import { getPrimaryPhotoUrl } from "../Favorites/favoritesBackend"
 import axios from "axios"
+import { Share } from "react-native"
+
 
 // backend existente
 import {
@@ -588,12 +590,39 @@ export default function MainScreenV2() {
       if (f) runOnJS(closeBottomSheetJS)()
     }))
 
-  const handleShare = () => {
-    if (selectedPlace) Alert.alert("Compartir", selectedPlace.name)
+const handleShare = async () => {
+  if (!selectedPlace) return
+
+  const message = `${selectedPlace.name}\n\n📍 ${selectedPlace.formatted_address || "Ver en el mapa"}\n\nAbrir en Google Maps: https://www.google.com/maps/search/?api=1&query=${selectedPlace.geometry.location.lat},${selectedPlace.geometry.location.lng}`
+
+  try {
+    await Share.share({
+      message,
+      title: `Compartir ${selectedPlace.name}`,
+    })
+  } catch (error) {
+    Alert.alert("Error", "No se pudo compartir el lugar.")
   }
-  const handleDirections = () => {
-    if (selectedPlace) Alert.alert("Direcciones", `Abriendo ${selectedPlace.name}`)
+}
+
+const handleDirections = () => {
+  if (!selectedPlace?.geometry?.location) {
+    Alert.alert("Error", "No se pudo obtener la ubicación del lugar.")
+    return
   }
+
+  const { lat, lng } = selectedPlace.geometry.location
+  const label = encodeURIComponent(selectedPlace.name || "Ubicación")
+  const url = Platform.select({
+    ios: `maps:0,0?q=${label}@${lat},${lng}`,
+    android: `geo:0,0?q=${lat},${lng}(${label})`,
+  })
+
+  Linking.openURL(url!).catch(() => {
+    Alert.alert("Error", "No se pudo abrir Google Maps.")
+  })
+}
+
 
   const handleWebsite = () => {
     if (selectedPlace?.website) {
