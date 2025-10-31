@@ -12,6 +12,21 @@ export const styles = StyleSheet.create({
     backgroundColor: "#feead8",
   },
 
+  overlayContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 30,
+    backgroundColor: "rgba(255, 255, 255, 0.6)", // da un leve velo translúcido
+  },
+
+  blurOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
 
   header: {
     paddingHorizontal: 16,
@@ -116,6 +131,45 @@ export const styles = StyleSheet.create({
     color: "#6B7280",
     textAlign: "center",
   },
+  buttonContainer: {
+    width: "100%",
+  },
+  primaryButton: {
+    backgroundColor: "#ff9500",
+    padding: 15,
+    borderRadius: 30,
+    marginBottom: 15,
+    width: "100%",
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  secondaryButton: {
+    borderColor: "#ff9500",
+    borderWidth: 1,
+    padding: 15,
+    borderRadius: 30,
+  },
+  secondaryButtonText: {
+    color: "#ff9500",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#ff9500",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#ff9500",
+    marginBottom: 30,
+    textAlign: "center",
+  },
+  
 });
 
 
@@ -145,4 +199,8 @@ export const tagStyle = {
   textSelected: {
     color: "white",
   },
+  
+
 };
+
+

@@ -270,7 +270,7 @@ export default function MainScreenV2() {
     if (!selectedPlace?.place_id) return
     try {
       setIsLoadingReviews(true)
-      const res = await axios.get(`http://172.16.6.156:8000/api/reviews/place/${selectedPlace.place_id}`)
+      const res = await axios.get(`http://172.16.1.95:8000/api/reviews/place/${selectedPlace.place_id}`)
       const transformed = (res.data?.reviews ?? []).map((r: any) => ({
         id: r._id,
         rating: r.rating,
@@ -309,7 +309,7 @@ export default function MainScreenV2() {
         placeName: selectedPlace.name ?? "Lugar sin nombre",
         images: [],
       }
-      await axios.post(`http://172.16.6.156:8000/api/reviews/create`, payload, {
+      await axios.post(`http://172.16.1.95:8000/api/reviews/create`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       })
 

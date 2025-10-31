@@ -24,6 +24,7 @@ import { useKeyboardVisibility } from "../../hooks/useKeyboardVisibility";
 import { getPhotoUrl } from "../Main/mainBackend";
 import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { TabParamList } from "../../types/navigation"; // el mismo que usa tu Main
+import { BlurView } from "expo-blur";
 
 type Place = any;
 
@@ -58,15 +59,19 @@ export default function FavoritesScreen() {
     useState<Location.LocationObjectCoords | null>(null);
   const isKeyboardVisible = useKeyboardVisibility();
 
-  // búsqueda por nombre
   const [searchText, setSearchText] = useState("");
+  const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
 
-const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
+    // búsqueda por nombre
 const toggleFilter = (label: string) => {
   setSelectedFilters((prev) =>
     prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
   );
 };
+
+
+ 
+
 
   useEffect(() => {
     (async () => {
@@ -311,6 +316,24 @@ const filteredFavorites = useMemo(() => {
             );
           })}
         </ScrollView>
+      )}
+
+      {/* Overlay si el usuario no está logueado */}
+      {!user && (
+        <BlurView intensity={60} tint="light" style={styles.blurOverlay}>
+          <View style={styles.overlayContainer}>
+            <Text style={styles.title}>Accede a Favoritos</Text>
+            <Text style={styles.subtitle}>
+              Guarda y accede a tus lugares preferidos iniciando sesión o creando una cuenta.
+            </Text>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => navigation.navigate("User")}
+            >
+              <Text style={styles.primaryButtonText}>Crea tu Cuenta</Text>
+            </TouchableOpacity>
+          </View>
+        </BlurView>
       )}
 
       <StatusBar style="dark" />

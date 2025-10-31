@@ -19,7 +19,7 @@ export const verifyCode = async (
   }
 
   try {
-    const response = await fetch('http://172.16.6.156:8000/api/auth/verify-verification-code', {
+    const response = await fetch('http://172.16.1.95:8000/api/auth/verify-verification-code', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ export const resendVerificationCode = async (
   email: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const response = await fetch('http://172.16.6.156:8000/api/auth/send-verification-code', {
+    const response = await fetch('http://172.16.1.95:8000/api/auth/send-verification-code', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

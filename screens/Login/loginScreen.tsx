@@ -31,7 +31,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post('http://172.16.6.156:8000/api/auth/signin', { email, password })
+      const res = await axios.post('http://172.16.1.95:8000/api/auth/signin', { email, password })
       const token = res.data.token
       await Promise.resolve(login(token))
       const decoded = parseJwt(token)

@@ -66,7 +66,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            await axios.delete(`http://172.16.6.156:8000/api/reviews/${id}`, {
+            await axios.delete(`http://172.16.1.95:8000/api/reviews/${id}`, {
               headers: { Authorization: `Bearer ${token}` },
             })
             setReviews(reviews.filter((r) => r.id !== id))
@@ -158,7 +158,7 @@ const panResponderFilters = useRef(
 
 const fetchUserReviews = useCallback(async () => {
   try {
-    const res = await axios.get("http://172.16.6.156:8000/api/reviews/my-reviews", {
+    const res = await axios.get("http://172.16.1.95:8000/api/reviews/my-reviews", {
       headers: { Authorization: `Bearer ${token}` },
     })
     const transformedReviews = res.data.reviews.map((review: any) => ({
