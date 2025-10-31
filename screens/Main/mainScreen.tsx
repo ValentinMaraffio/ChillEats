@@ -472,7 +472,7 @@ export default function MainScreenV2() {
   }
 
   const availableFilters = [
-    { key: DEFAULT_FILTER_KEY, label: "Recomendados" },
+  
     { key: "sin tacc", label: "Sin TACC" },
     { key: "vegano", label: "Vegano" },
     { key: "vegetariano", label: "Vegetariano" },
@@ -1000,7 +1000,7 @@ const handleDirections = () => {
                           }
 
                           if (!item.dietaryCategories || item.dietaryCategories.length === 0) {
-                            return <Text style={baseStyles.badge}>Restaurante</Text>
+                            return 
                           }
 
                           const filteredBadges =
@@ -1008,22 +1008,23 @@ const handleDirections = () => {
                               ? item.dietaryCategories
                               : getFilteredBadges(item.dietaryCategories, effectiveFilters)
 
-                          if (filteredBadges.length === 0) {
-                            return <Text style={baseStyles.badge}>Restaurante</Text>
-                          }
+                          
 
                           return filteredBadges.slice(0, 3).map((category: string, index: number) => (
                             <Text
                               key={index}
                               style={{
-                                backgroundColor: "#4CAF50",
-                                color: "#fff",
-                                paddingHorizontal: 10,
-                                paddingVertical: 6,
-                                borderRadius: 12,
-                                fontSize: width * 0.038,
-                                marginRight: 5,
-                                marginBottom: 5,
+                                backgroundColor: "#ffeedfff",
+                                borderColor: "#ff9500",
+                                borderWidth: 1,
+                                paddingHorizontal: 7,
+                                paddingVertical: 4,
+                                  borderRadius: 10,
+                                  color: "#ff9500",
+                                      textAlign: "center",
+                                      fontWeight: "bold",
+                                       marginRight: 2,
+                                marginBottom: 2,
                               }}
                             >
                               {getDietaryDisplayLabel(category)}
@@ -1161,19 +1162,7 @@ const handleDirections = () => {
             </View>
 
             {mode === "feed" ? (
-              <View style={{ flex: 1 }}> {/*}
-                <View style={s.sectionHeader}>
-                  <Text style={s.sectionTitle}>{places.length > 0 ? "Resultados" : "Recomendados cerca"}</Text>
-              <TouchableOpacity
-                    onPress={() => {
-                      singlePlaceLock.current = false
-                      goToMap()
-                    }}
-                  >
-                    <Text style={s.sectionAction}>Ver en mapa</Text>
-                  </TouchableOpacity>
-                </View>{*/}
-
+              <View style={{ flex: 1 }}> 
                 {isFetching ? (
                   <View style={s.loadingBlock}>
                     <ActivityIndicator size="large" />
@@ -1458,13 +1447,20 @@ const handleDirections = () => {
                             <View
                               key={index}
                               style={{
-                                backgroundColor: "#D4EDDA",
-                                paddingHorizontal: 12,
-                                paddingVertical: 6,
-                                borderRadius: 16,
+                                
                               }}
                             >
-                              <Text style={{ color: "#155724", fontSize: 13, fontWeight: "600" }}>
+                              <Text style={{ backgroundColor: "#ffeedfff",
+                                borderColor: "#ff9500",
+                                borderWidth: 1,
+                                paddingHorizontal: 7,
+                                paddingVertical: 4,
+                                  borderRadius: 10,
+                                  color: "#ff9500",
+                                      textAlign: "center",
+                                      fontWeight: "bold",
+                                       marginRight: 2,
+                                marginBottom: 2, }}>
                                 {getDietaryDisplayLabel(category)}
                               </Text>
                             </View>
@@ -1916,13 +1912,17 @@ const s = StyleSheet.create({
     marginTop: 6,
   },
   badge: {
-    backgroundColor: "#00b50677",
-    color: "#fff",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontSize: 12,
-    fontWeight: "600",
+    backgroundColor: "#feead8",
+borderColor: "#ff9500",
+borderWidth: 1,
+ paddingHorizontal: 7,
+paddingVertical: 4,
+borderRadius: 10,
+ color: "#ff9500",
+textAlign: "center",
+  fontWeight: "bold",
+  marginRight: 2,
+  marginBottom: 2, 
   },
   websiteButton: {
     flexDirection: "row",
